@@ -7,7 +7,7 @@ const NAMES = (src.match(/^(?:const|let|function) +[A-Za-z_$][\w$]*/gm) || []).m
 module.exports = function load({ hoy = [2026, 11, 16], guardado } = {}) {
   const now = new Date(hoy[0], hoy[1] - 1, hoy[2], 12).getTime();
   class FakeDate extends Date { constructor(...a) { if (a.length) super(...a); else super(now); } static now() { return now; } }
-  const store = new Map(guardado === undefined ? [] : [['optimizador-vacaciones-mx-v1', typeof guardado === 'string' ? guardado : JSON.stringify(guardado)]]);
+  const store = new Map(guardado === undefined ? [] : [['megapuente-v1', typeof guardado === 'string' ? guardado : JSON.stringify(guardado)]]);
   const localStorage = { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) };
   const api = new Function('Date', 'localStorage', `${src}; return { ${NAMES.join(', ')}, setState: s => { state = s; }, getState: () => state };`)(FakeDate, localStorage);
   api.store = store;

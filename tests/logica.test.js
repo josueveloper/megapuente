@@ -157,7 +157,7 @@ prueba('el enlace conserva el plan (acentos y emojis incluidos) y uno dañado se
 prueba('save() escribe el estado actual en localStorage', () => {   // que no guarde mientras se ve un plan compartido se prueba en ui.test.js
   const L = load({ guardado: { days: 7 } });
   L.setState({ ...L.getState(), days: 30 }); L.save();
-  assert.strictEqual(JSON.parse(L.store.get('optimizador-vacaciones-mx-v1')).days, 30);
+  assert.strictEqual(JSON.parse(L.store.get('megapuente-v1')).days, 30);
 });
 
 console.log('Optimizador contra fuerza bruta');

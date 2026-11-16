@@ -9,7 +9,7 @@ try { ({ chromium } = require('playwright')); } catch (e) {
   process.env.LD_LIBRARY_PATH = ['libs/usr/lib/' + arch, 'libs/lib/' + arch].map(d => path.join(TOOLS, d)).filter(fs.existsSync).concat(process.env.LD_LIBRARY_PATH || []).join(':');
   ({ chromium } = require(path.join(TOOLS, 'browser/node_modules/playwright')));
 }
-const PAGE = 'file://' + path.resolve(__dirname, '../index.html'), KEY = 'optimizador-vacaciones-mx-v1';
+const PAGE = 'file://' + path.resolve(__dirname, '../index.html'), KEY = 'megapuente-v1';
 const DESK = { width: 1280, height: 900 }, PHONE = { width: 390, height: 844 };
 const HOY = '2026-11-16T10:00:00-06:00';   // lunes 16 nov 2026 (feriado), hora de Ciudad de México
 
@@ -27,7 +27,7 @@ async function abrir({ guardado, hoy = HOY, movil = false, url = PAGE, ctx } = {
   return p;
 }
 const ver = p => p.evaluate(() => ({
-  estado: __vac.state(), guardado: JSON.parse(localStorage.getItem('optimizador-vacaciones-mx-v1')),
+  estado: __vac.state(), guardado: JSON.parse(localStorage.getItem('megapuente-v1')),
   periodo: document.querySelector('.per')?.textContent || '', meses: document.querySelectorAll('.month').length, primerMes: document.querySelector('.month h4')?.textContent || '',
   chip: [...document.querySelectorAll('.chip[aria-pressed=true]')].map(c => c.textContent).join(','), feriados: document.querySelector('#holsum').textContent,
   notas: [...document.querySelectorAll('.note')].map(x => x.textContent), plan: __vac.planText(), heroOculto: document.querySelector('#hero').hidden,
