@@ -49,6 +49,10 @@ prueba('metadatos para publicar', async () => {
   const p = await abrir();
   const m = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('meta[name],meta[property]')].map(x => [x.getAttribute('name') || x.getAttribute('property'), x.content])));
   for (const k of ['description', 'theme-color', 'og:title', 'og:description', 'og:type', 'og:locale', 'twitter:card']) assert.ok(m[k], 'falta ' + k);
+  assert.strictEqual(m['og:url'], 'https://megapuente.com/'); assert.strictEqual(m['og:image'], 'https://megapuente.com/og.png');
+  assert.strictEqual(await p.evaluate(() => document.querySelector('link[rel=canonical]').href), 'https://megapuente.com/');
+  const png = fs.readFileSync(path.resolve(__dirname, '../og.png'));   // la imagen existe y mide lo que dicen los metadatos
+  assert.deepStrictEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [+m['og:image:width'], +m['og:image:height']]);
 });
 prueba('no sugiere pedir el día de hoy; fijarlo a mano sí funciona', async () => {
   const p = await abrir({ hoy: '2026-11-20T18:00:00-06:00', guardado: { days: 3, start: '2026-11-20', end: '2026-12-31', style: 'puentes' } });

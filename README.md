@@ -1,6 +1,6 @@
 # Optimizador de vacaciones · México
 
-Página de un solo archivo (`index.html`) que dice qué días de vacaciones pedir para juntar más días libres
+**https://megapuente.com** · Página de un solo archivo (`index.html`) que dice qué días de vacaciones pedir para juntar más días libres
 con fines de semana, feriados y puentes. No tiene servidor ni dependencias: todo se calcula y se guarda en el navegador.
 
 ## Estructura
@@ -12,6 +12,8 @@ con fines de semana, feriados y puentes. No tiene servidor ni dependencias: todo
 | `src/logic.js` | Fechas, feriados, estado guardado, enlace para compartir y el optimizador. |
 | `src/ui.js` | Interfaz: configuración, plan, calendario, exportar. |
 | `src/build.py` | Une los tres archivos e incrusta las tipografías de `src/fonts/`. |
+| `og.png`, `src/og-image.js` | Imagen que se ve al compartir la dirección (1200×630) y el script que la genera. |
+| `CNAME`, `.nojekyll` | Publicación en GitHub Pages con el dominio `megapuente.com`, sirviendo los archivos tal cual. |
 | `tests/` | Pruebas del cálculo y de la página. |
 
 ## Cambiar algo
@@ -48,9 +50,12 @@ node tests/ui.test.js         # la página en Chromium, con la fecha simulada
   un descanso que no cambió no lo duplica. Si un descanso cambia de fechas, el evento anterior hay que borrarlo a mano
   en el calendario (un archivo ICS no puede borrar eventos ya importados).
 
-## Al publicar
+## Publicación
 
-La página ya trae descripción, `theme-color` y Open Graph básico. Faltan `og:url` y `og:image`, que necesitan la
-dirección pública definitiva (se añaden en `src/top.html`).
+GitHub Pages sirve la rama `main` en `https://megapuente.com` (dominio en Cloudflare, con registros DNS hacia GitHub).
+Publicar un cambio es reconstruir `index.html`, pasar las pruebas y hacer `git push`.
+
+Los metadatos (descripción, `theme-color`, Open Graph con `og:url` y `og:image`) están en `src/top.html`. Si cambia el
+aspecto del resumen, `node src/og-image.js` regenera `og.png`.
 
 Tipografías: Press Start 2P y DotGothic16 (SIL OFL 1.1, licencias en `src/fonts/`).
