@@ -60,6 +60,7 @@ prueba('marca Megapuente y texto fijo de puentes y preguntas (también sin JavaS
   const info = () => p.evaluate(() => document.querySelector('#info-years').textContent.replace(/\s+/g, ' '));
   assert.match(await info(), /Puentes y feriados de México en 2027 y 2028.*jue 16 sep.*Pide el vie 17 sep y descansas 4 días/);
   assert.strictEqual(await p.locator('.faq h3').count(), 6); assert.strictEqual(await p.locator('.foot').count(), 1);
+  assert.match(await p.textContent('.faq'), /no se envía a ningún servidor\. Lo único que se mide es cuántas visitas .* sin cookies/);
   assert.strictEqual(JSON.parse(await p.textContent('script[type="application/ld+json"]')).name, 'Megapuente');
   // Abierta casi un año después, el bloque se actualiza solo aunque index.html no se haya reconstruido.
   p = await abrir({ hoy: '2027-10-05T10:00:00-06:00' });
