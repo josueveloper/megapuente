@@ -117,6 +117,10 @@ prueba('un estado dañado se limpia en vez de romper', () => {
   assert.strictEqual(L.sanitize({ start: '2027-01-01', end: '2027-06-30' }).preset, null, 'lo guardado sin «preset» conserva sus fechas');
   assert.strictEqual(L.sanitize({ preset: 'rest' }).preset, 'rest');
 });
+prueba('las marcas de días que ya pasaron se descartan (hoy y lo futuro se conservan)', () => {
+  const L = load({ hoy: [2026, 11, 16] }), s = L.sanitize({ fixed: ['2026-03-13', '2026-11-15', '2026-11-16', '2027-01-05'], blocked: ['2025-12-24', '2028-02-01'] });
+  assert.deepStrictEqual([s.fixed, s.blocked], [['2026-11-16', '2027-01-05'], ['2028-02-01']]);
+});
 prueba('lo que hay en localStorage se lee ya limpio', () => {
   assert.strictEqual(load({ guardado: { days: 20, fixed: 5, custom: null } }).getState().days, 20);
   assert.deepStrictEqual(load({ guardado: { days: 20, fixed: 5, custom: null } }).getState().fixed, []);

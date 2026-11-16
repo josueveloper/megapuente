@@ -86,7 +86,7 @@ function defaults() {
    por defecto, para que un dato dañado no deje la página en blanco. Sin «preset» (versión anterior) las fechas son fijas. */
 function sanitize(o) {
   const d = defaults(), okDate = v => typeof v === 'string' && !isNaN(fromIso(v));
-  const dates = a => Array.isArray(a) ? [...new Set(a.filter(okDate))].slice(0, 400) : [];
+  const today = todayDn(), dates = a => Array.isArray(a) ? [...new Set(a.filter(v => okDate(v) && fromIso(v) >= today))].slice(0, 400) : [];   // las marcas de días que ya pasaron se descartan
   const preset = o.preset === 'rest' || o.preset === '12m' ? o.preset : null, per = okDate(o.start) && okDate(o.end);
   const hol = {};
   if (o.hol && typeof o.hol === 'object') for (const r of RULES) if (typeof o.hol[r.id] === 'boolean') hol[r.id] = o.hol[r.id];

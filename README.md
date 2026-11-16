@@ -38,7 +38,9 @@ node tests/ui.test.js         # la página en Chromium, con la fecha simulada
 - **Periodo**: «Resto del año» y «Próximos 12 meses» se guardan como relativos y se recalculan al abrir la página;
   un año o unas fechas escritas a mano se quedan fijos, y lo que ya pasó no se dibuja. Un periodo vencido vuelve al de por defecto.
 - **Estado**: en `localStorage` (`optimizador-vacaciones-mx-v1`). Todo lo que se lee de ahí o de un enlace pasa por
-  `sanitize`, que descarta lo que no sea válido.
+  `sanitize`, que descarta lo que no sea válido y las marcas de días que ya pasaron.
+- **Marcas** (vacación fija, «no puedo faltar»): las de fuera del periodo se conservan por si se vuelve a él.
+  «Quitar mis marcas» solo aparece si hay alguna a la vista y solo quita las del periodo mostrado.
 - **Compartir**: el botón copia un enlace `…#plan=<código>` con la configuración (base64url de un JSON) en el fragmento
   de la dirección, que no se envía a ningún servidor. Quien lo abre sin tener nada guardado se queda con ese plan; quien ya
   tenía uno distinto solo lo ve (no se guarda) hasta que elige «Quedarme con este» o «Volver al mío».

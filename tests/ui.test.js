@@ -97,6 +97,24 @@ prueba('«Equilibrado»: texto con 16 días o más y aviso cuando no cabe la vac
   v = await ver(await abrir({ guardado: { ...A2027, days: 1, style: 'puentes' } }));
   assert.ok(!v.notas.some(n => /busca/.test(n)), 'el aviso solo aplica a Equilibrado');
 });
+prueba('«Quitar mis marcas» solo aparece con marcas a la vista y no borra las de otros periodos', async () => {
+  const hay = p => p.evaluate(() => !!document.querySelector('#clear'));
+  // Marcas pasadas, de otro año o tapadas por un feriado o un fin de semana: no se ven, así que no hay botón.
+  let p = await abrir({ guardado: { ...A2027, fixed: ['2026-03-13', '2028-02-08', '2027-02-01'], blocked: ['2026-10-01', '2028-02-09', '2027-03-06'] } }), v = await ver(p);
+  assert.strictEqual(await hay(p), false);
+  assert.deepStrictEqual([v.estado.fixed, v.estado.blocked], [['2028-02-08', '2027-02-01'], ['2028-02-09', '2027-03-06']], 'las pasadas se descartan al abrir');
+  // Con marcas a la vista: el botón quita las del periodo y deja las de 2028; Deshacer las regresa.
+  p = await abrir({ guardado: { ...A2027, fixed: ['2027-03-04', '2028-02-08'], blocked: ['2027-03-05', '2028-02-09'] } });
+  assert.strictEqual(await hay(p), true);
+  await p.locator('#clear').click(); await p.waitForTimeout(200); v = await ver(p);
+  assert.deepStrictEqual([v.estado.fixed, v.estado.blocked], [['2028-02-08'], ['2028-02-09']]); assert.strictEqual(await hay(p), false);
+  assert.strictEqual(await p.locator('.d.fix, .d.blk').count(), 0);
+  await p.locator('#undo').click(); await p.waitForTimeout(200); v = await ver(p);
+  assert.deepStrictEqual([v.estado.fixed, v.estado.blocked], [['2027-03-04', '2028-02-08'], ['2027-03-05', '2028-02-09']]); assert.strictEqual(await hay(p), true);
+  // Al cambiar a 2028 sus marcas siguen ahí.
+  await p.locator('.chip', { hasText: '2028' }).click(); await p.waitForTimeout(200);
+  assert.strictEqual(await hay(p), true); assert.strictEqual(await p.locator('.d.fix').count(), 1); assert.strictEqual(await p.locator('.d.blk').count(), 1);
+});
 prueba('menú de un día: Tab no se sale y Escape lo cierra', async () => {
   const p = await abrir({ guardado: A2027 });
   await p.locator('button[data-n].vac').first().click();

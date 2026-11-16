@@ -125,6 +125,7 @@ function undo() {
   const s = undoStack.pop(); if (!s) return;
   Object.assign(state, JSON.parse(s)); renderHolidays(); render(); toast('Cambio deshecho');
 }
+const inPeriod = (M, k) => { const n = fromIso(k); return n >= M.eff && n <= M.e; };
 const setFixed = (k, on) => { state.fixed = state.fixed.filter(x => x !== k); if (on) { state.fixed.push(k); state.blocked = state.blocked.filter(x => x !== k); } };
 const setBlocked = (k, on) => { state.blocked = state.blocked.filter(x => x !== k); if (on) { state.blocked.push(k); state.fixed = state.fixed.filter(x => x !== k); } };
 let toastT;
@@ -325,7 +326,8 @@ function render() {
       </li>`).join('')}</ol>` : '<div class="empty">Todavía no hay descansos en el plan.</div>';
 
   // Calendario
-  const hasMarks = state.fixed.length || state.blocked.length;
+  // «Quitar mis marcas» solo aparece si hay alguna a la vista (dentro del periodo y no tapada por un descanso o feriado).
+  const hasMarks = [...state.fixed, ...state.blocked].some(k => { const n = fromIso(k); return inPeriod(M, k) && !M.rest.has(P(n).w) && !M.hmap.has(n); });
   let cal = '';
   for (const [y, m] of months) {
     const first = dn(y, m, 1), nd = dn(y, m + 1, 1) - first;
@@ -553,7 +555,7 @@ $('#res').addEventListener('click', e => {
     mark(() => ks.forEach(k => setBlocked(k, true)), 'Descanso descartado'); return;
   }
   if ((b = q('[data-opp]'))) { const ks = b.dataset.opp.split(',').map(n => iso(+n)); mark(() => ks.forEach(k => setFixed(k, true)), 'Puente agregado a tu plan'); return; }
-  if (e.target.id === 'clear') { mark(() => { state.fixed = []; state.blocked = []; }, 'Marcas quitadas'); return; }
+  if (e.target.id === 'clear') { mark(() => { state.fixed = state.fixed.filter(k => !inPeriod(M, k)); state.blocked = state.blocked.filter(k => !inPeriod(M, k)); }, 'Marcas quitadas'); return; }   // las de otros periodos se conservan
   if (e.target.id === 'copy') { copyText(planText()); return; }
   if (e.target.id === 'print') { window.print(); return; }
   if (e.target.id === 'ics') {
