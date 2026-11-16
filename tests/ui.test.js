@@ -45,6 +45,22 @@ prueba('carga por defecto sin errores ni desborde (escritorio y celular)', async
     assert.match(v.plan, /12 días de vacaciones → 37 días de descanso/);
   }
 });
+prueba('la medición de visitas solo se carga en megapuente.com', async () => {
+  // Abierta como archivo local (pruebas, desarrollo) no pide nada a Cloudflare.
+  let p = await abrir(); const pedidos = []; p.on('request', r => pedidos.push(r.url()));
+  await p.reload(); await p.waitForTimeout(400);
+  assert.ok(!pedidos.some(u => /cloudflareinsights/.test(u)), 'pidió la baliza fuera del sitio publicado');
+  assert.strictEqual(await p.locator('script[data-cf-beacon]').count(), 0);
+  // Servida como https://megapuente.com (respuestas simuladas, sin salir a internet) sí inserta la baliza con su token.
+  const ctx = await browser.newContext(), q = await ctx.newPage(); let baliza = 0;
+  await ctx.route('**/*', r => { const u = r.request().url();
+    if (u.startsWith('https://megapuente.com/')) return r.fulfill({ contentType: 'text/html; charset=utf-8', body: fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8') });
+    if (/static\.cloudflareinsights\.com\/beacon\.min\.js/.test(u)) { baliza++; return r.fulfill({ contentType: 'application/javascript', body: '' }); }
+    return r.abort(); });
+  await q.goto('https://megapuente.com/'); await q.waitForTimeout(400);
+  assert.strictEqual(baliza, 1);
+  assert.match(await q.getAttribute('script[data-cf-beacon]', 'data-cf-beacon'), /^\{"token": "[0-9a-f]{32}"\}$/);
+});
 prueba('metadatos para publicar', async () => {
   const p = await abrir();
   const m = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('meta[name],meta[property]')].map(x => [x.getAttribute('name') || x.getAttribute('property'), x.content])));

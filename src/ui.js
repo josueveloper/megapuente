@@ -574,5 +574,14 @@ window.addEventListener('hashchange', () => { if (linkCode()) location.reload();
 window.__vac = { planText: () => last ? planText() : '', planIcs: () => last ? planIcs() : '', state: () => state, shareLink };   // para las pruebas
 })();
 </script>
+<!-- Cloudflare Web Analytics: cuenta visitas de forma anónima y sin cookies. Solo se carga en el sitio publicado,
+     no al abrir el archivo en local, en las pruebas ni en copias de la página en otra dirección. -->
+<script>
+if (/(^|\.)megapuente\.com$/.test(location.hostname)) {
+  const s = document.createElement('script');
+  s.type = 'module'; s.src = 'https://static.cloudflareinsights.com/beacon.min.js'; s.dataset.cfBeacon = '{"token": "9d936fd9d56c4c91a1c76a22c8fb1dc6"}';
+  document.body.appendChild(s);
+}
+</script>
 </body>
 </html>

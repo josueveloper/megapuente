@@ -61,6 +61,9 @@ node tests/ui.test.js         # la página en Chromium, con la fecha simulada
 GitHub Pages sirve la rama `main` en `https://megapuente.com` (dominio en Cloudflare, con registros DNS hacia GitHub).
 Publicar un cambio es reconstruir `index.html`, pasar las pruebas y hacer `git push`.
 
+Las visitas se cuentan con Cloudflare Web Analytics (anónimo, sin cookies). El script va al final de `src/ui.js` y solo se
+carga cuando la página se sirve desde `megapuente.com`.
+
 Los metadatos (descripción, `theme-color`, Open Graph con `og:url` y `og:image`) están en `src/top.html`. Si cambia el
 aspecto del resumen, `node src/og-image.js` regenera `og.png`.
 
