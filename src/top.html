@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>Optimizador de vacaciones · México</title>
-<meta name="description" content="Calcula qué días de vacaciones pedir en México para juntar más días libres con fines de semana, feriados y puentes.">
+<title>Megapuente · Optimizador de vacaciones y puentes en México</title>
+<meta name="description" content="Calcula qué días de vacaciones pedir en México para armar puentes y megapuentes: junta más días libres con fines de semana y feriados. Gratis y sin registro.">
 <meta name="theme-color" content="#fff4dc" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17122b" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://megapuente.com/">
@@ -17,9 +17,10 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Ejemplo de plan: 37 días de descanso con 12 días de vacaciones">
 <meta property="og:locale" content="es_MX">
-<meta property="og:title" content="Optimizador de vacaciones · México">
-<meta property="og:description" content="Calcula qué días de vacaciones pedir para juntar más días libres con fines de semana, feriados y puentes.">
+<meta property="og:title" content="Megapuente · Optimizador de vacaciones y puentes en México">
+<meta property="og:description" content="Calcula qué días de vacaciones pedir para armar puentes y megapuentes. Gratis y sin registro.">
 <meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Megapuente","url":"https://megapuente.com/","description":"Calcula qué días de vacaciones pedir en México para armar puentes y megapuentes: junta más días libres con fines de semana y feriados. Gratis y sin registro.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","inLanguage":"es-MX","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"MXN"}}</script>
 <style>
 /* Tipografías pixel (licencia SIL OFL 1.1): Press Start 2P para títulos y DotGothic16 para el texto */
 @font-face{font-family:"Press Start 2P";font-weight:400;font-display:swap;src:url(data:font/woff2;base64,/*FONT:press-start-2p-latin-400-normal.woff2*/) format("woff2")}
@@ -64,7 +65,7 @@ svg.spr{display:block;height:auto}
 .flag{height:9px;background:linear-gradient(90deg,#39d98a 0 33.3%,#fffdf6 33.3% 66.6%,#ff7676 66.6%);border-bottom:3px solid var(--line)}
 .top{max-width:1240px;margin:0 auto;padding:22px 22px 8px;display:flex;gap:16px;align-items:center}
 .logo .spr{width:48px;filter:drop-shadow(3px 3px 0 var(--shadow))}
-.top h1{margin:0;font:400 16px/1.5 var(--f-d);text-transform:uppercase}
+.top h1{margin:0;font:400 20px/1.4 var(--f-d);text-transform:uppercase}
 .top p{margin:5px 0 0;color:var(--muted);font-size:16px}
 .cur{display:inline-block;width:9px;height:15px;background:var(--green);margin-left:5px;vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -74,7 +75,7 @@ svg.spr{display:block;height:auto}
 }
 @media (max-width:900px){
   .wrap{grid-template-columns:minmax(0,1fr);gap:0;padding:14px 12px 40px}
-  .top{padding:16px 14px 0;gap:12px}.top h1{font-size:14px}.top p{font-size:16px}.logo .spr{width:40px}
+  .top{padding:16px 14px 0;gap:12px}.top h1{font-size:16px}.top p{font-size:16px}.logo .spr{width:40px}
   body{padding-bottom:92px}
   #reset{margin-bottom:16px}
 }
@@ -334,7 +335,20 @@ button.d:hover{box-shadow:var(--b2)}
 details.how{color:var(--muted);font-size:14px;padding:0 6px}
 details.how summary{cursor:pointer;text-shadow:1px 0 0 currentColor}
 details.how p{margin:8px 0 0}
-.foot{color:var(--muted);font-size:14px;padding:16px 6px 0}
+.foot{color:var(--muted);font-size:14px;padding:0 6px}
+/* Texto fijo al final: feriados y puentes de dos años y preguntas frecuentes */
+.info{max-width:1240px;margin:0 auto;padding:0 22px 44px}
+.info p{margin:0 0 10px;max-width:86ch;line-height:1.4}
+.info h3{font:400 10px/1.6 var(--f-d);color:var(--ink);margin:16px 0 6px}
+.info-y{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 34px}
+.hl{list-style:none;margin:0;padding:0}
+.hl li{display:grid;grid-template-columns:86px minmax(0,1fr);gap:0 10px;padding:8px 0;border-top:2px dotted var(--soft2);line-height:1.3}
+.hl li:first-child{border-top:0}
+.hl small,.hl-x{display:block;color:var(--muted);font-size:14px}
+.info .hl-x{margin:8px 0 0;padding-top:10px;border-top:2px dotted var(--soft2)}
+.faq h3{font:400 16px/1.3 var(--f);text-transform:none;text-shadow:1px 0 0 currentColor;margin:18px 0 4px}
+.faq h3:first-of-type{margin-top:0}
+@media (max-width:900px){.info{padding:0 12px 24px}.info-y{grid-template-columns:minmax(0,1fr)}}
 
 /* Menú del día */
 .pop{position:fixed;z-index:30;width:286px;background:var(--card);box-shadow:var(--b),var(--shl);padding:8px}
@@ -376,7 +390,7 @@ details.how p{margin:8px 0 0}
 @media (max-width:900px){.toast{bottom:calc(104px + env(safe-area-inset-bottom))}}
 
 @media print{
-  aside,.mbar,.toast,.pb-a,.head .row,.noprint,.how,.flag,.foot{display:none!important}
+  aside,.mbar,.toast,.pb-a,.head .row,.noprint,.how,.flag,.foot,.info{display:none!important}
   body{background:#fff;padding:0}.wrap{display:block;padding:0}.top{padding:0 0 10px}
   .card,.hero{break-inside:avoid}.month,.pb{break-inside:avoid}
 }
@@ -387,8 +401,8 @@ details.how p{margin:8px 0 0}
 <header class="top">
   <span class="logo" id="logo"></span>
   <div>
-    <h1>Optimizador de vacaciones</h1>
-    <p>Menos días pedidos, más días libres<span class="cur"></span></p>
+    <h1>Megapuente</h1>
+    <p>Optimizador de vacaciones: menos días pedidos, más días libres<span class="cur"></span></p>
   </div>
 </header>
 
@@ -446,6 +460,28 @@ details.how p{margin:8px 0 0}
 
   <section id="res"></section>
 </main>
+
+<!-- Texto fijo para quien llega buscando «puentes 2027» y para los buscadores. El bloque de los años lo genera
+     infoHtml() (logic.js): build.py lo incrusta aquí y la página lo actualiza al abrir. -->
+<section class="info" aria-label="Puentes, feriados y preguntas frecuentes">
+  <div class="card" id="info-years"><!--INFO--></div>
+  <div class="card faq">
+    <h2>Preguntas frecuentes</h2>
+    <h3>¿Qué es un puente y qué es un megapuente?</h3>
+    <p>Un puente es un fin de semana largo: se forma cuando un feriado cae junto al sábado y domingo, o cuando pides el día que queda en medio. Un megapuente junta todavía más días; aquí llamamos así a los descansos de 6 a 8 días seguidos.</p>
+    <h3>¿Cuáles son los días de descanso obligatorio en México?</h3>
+    <p>Los del artículo 74 de la Ley Federal del Trabajo: 1 de enero, el primer lunes de febrero, el tercer lunes de marzo, 1 de mayo, 16 de septiembre, el tercer lunes de noviembre, 25 de diciembre, el 1 de octubre de cada seis años por la transmisión del Poder Ejecutivo Federal y el día de la jornada electoral en elecciones ordinarias.</p>
+    <h3>¿Jueves y Viernes Santo son feriados oficiales?</h3>
+    <p>No. Tampoco el 2 de noviembre, el 12 de diciembre ni el 24 y 31 de diciembre. Muchas empresas los dan de todos modos: si la tuya lo hace, márcalos en «Feriados de tu empresa» y el plan los aprovecha.</p>
+    <h3>¿Cuántos días de vacaciones me tocan por ley?</h3>
+    <p>Desde la reforma de 2023 son 12 días el primer año y 2 más por cada año hasta llegar a 20 en el quinto. A partir del sexto año aumentan 2 días por cada cinco años de servicio: 22 de los 6 a los 10 años, 24 de los 11 a los 15, y así sucesivamente.</p>
+    <h3>¿Cómo elige Megapuente los días?</h3>
+    <p>Prueba todas las combinaciones de tus días de vacaciones con los fines de semana y feriados del periodo, y se queda con la que suma más días de descanso según el estilo que elijas: muchos puentes, escapadas medianas, vacaciones largas o una mezcla.</p>
+    <h3>¿Cuesta algo o guarda mis datos?</h3>
+    <p>Es gratis y no pide registro. Tu plan se guarda solo en tu navegador; no se envía a ningún servidor.</p>
+  </div>
+  <div class="foot">Hecho con ☕ para quienes ya quieren puente.</div>
+</section>
 
 <div class="mbar away" id="mbar" hidden>
   <b id="mbar-n"></b>

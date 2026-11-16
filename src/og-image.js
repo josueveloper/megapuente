@@ -14,7 +14,7 @@ try { ({ chromium } = require('playwright')); } catch (e) {
   await p.clock.setFixedTime(new Date('2026-11-16T10:00:00-06:00'));   // siempre el mismo plan de ejemplo: 2027 con 12 días
   await p.goto('file://' + path.resolve(__dirname, '../index.html'));
   // Solo el encabezado y el resumen, ampliados hasta llenar la imagen.
-  await p.addStyleTag({ content: 'aside,#body,.mbar,.toast,.flag{display:none!important}.wrap{display:block;padding:0 22px}.top{padding:26px 22px 14px}html{zoom:1.42}body{padding:0;overflow:hidden}.hero{margin-bottom:0}' });
+  await p.addStyleTag({ content: 'aside,#body,.info,.mbar,.toast,.flag{display:none!important}.wrap{display:block;padding:0 22px}.top{padding:26px 22px 14px}html{zoom:1.42}body{padding:0;overflow:hidden}.hero{margin-bottom:0}' });
   await p.waitForTimeout(4000);
   await p.screenshot({ path: path.resolve(__dirname, '../og.png') });
   await b.close();

@@ -61,6 +61,34 @@ function holidayMap(y0, y1) {
   return map;
 }
 
+/* ---------- Texto fijo: feriados y puentes de dos años ----------
+   build.py incrusta este bloque en index.html (para buscadores y para quien llega buscando «puentes 2027») y la página
+   lo vuelve a generar al abrir, así que los años nunca quedan viejos. Los consejos suponen descanso en sábado y domingo. */
+const DOWL = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+function infoYears() { const p = P(todayDn()), y = p.m >= 9 ? p.y + 1 : p.y; return [y, y + 1]; }   // de octubre en adelante ya se planea el año siguiente
+function bridgeTip(n) {
+  const w = P(n).w, f = x => fmt(x, { year: false });
+  if (w === 0 || w === 6) return `Cae en ${DOWL[w]}: este año no da puente.`;
+  if (w === 1) return `Puente de 3 días (${f(n - 2)} – ${f(n)}). Si pides el ${f(n - 3)} o el ${f(n + 1)}, son 4.`;
+  if (w === 5) return `Puente de 3 días (${f(n)} – ${f(n + 2)}). Si pides el ${f(n - 1)} o el ${f(n + 3)}, son 4.`;
+  if (w === 2) return `Pide el ${f(n - 1)} y descansas 4 días (${f(n - 3)} – ${f(n)}).`;
+  if (w === 4) return `Pide el ${f(n + 1)} y descansas 4 días (${f(n)} – ${f(n + 3)}).`;
+  return `Pide lunes y martes (${f(n - 4)} – ${f(n)}) o jueves y viernes (${f(n)} – ${f(n + 4)}) y descansas 5 días.`;
+}
+function infoHtml() {
+  const ys = infoYears(), f = n => fmt(n, { year: false });
+  const year = y => {
+    const off = [], opt = [];
+    for (const r of RULES) { const n = r.f(y); if (n != null) (r.off ? off : opt).push([n, r.name]); }
+    off.sort((a, b) => a[0] - b[0]); opt.sort((a, b) => a[0] - b[0]);
+    return `<div><h3>Puentes y feriados ${y}</h3><ul class="hl">${off.map(([n, name]) => `<li><b>${f(n)}</b><span>${name}<small>${bridgeTip(n)}</small></span></li>`).join('')}</ul>`
+      + `<p class="hl-x">No son obligatorios, pero muchas empresas los dan: ${opt.map(([n, name]) => `${name} (${f(n)})`).join(', ')}.</p></div>`;
+  };
+  return `<h2>Puentes y feriados de México en ${ys[0]} y ${ys[1]}</h2>`
+    + '<p>Estos son los días de descanso obligatorio de la Ley Federal del Trabajo (artículo 74) y cómo convertir cada uno en puente si descansas sábado y domingo. Con tus días de vacaciones, el optimizador de arriba arma el plan completo del año.</p>'
+    + `<div class="info-y">${ys.map(year).join('')}</div>`;
+}
+
 /* ---------- Estilos de descanso ---------- */
 const STYLES = {
   mix: { name: 'Equilibrado', desc: 'Una vacación larga y el resto en puentes', min: 3, max: 16, long: 9 },
@@ -70,7 +98,7 @@ const STYLES = {
 };
 
 /* ---------- Estado ---------- */
-const KEY = 'optimizador-vacaciones-mx-v1';
+const KEY = 'optimizador-vacaciones-mx-v1';   // nombre anterior de la página; no se cambia para no perder lo que la gente ya tiene guardado
 function defaults() {
   const t = todayDn(), p = P(t);
   const next = p.m >= 9;

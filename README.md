@@ -1,4 +1,4 @@
-# Optimizador de vacaciones · México
+# Megapuente · optimizador de vacaciones para México
 
 **https://megapuente.com** · Página de un solo archivo (`index.html`) que dice qué días de vacaciones pedir para juntar más días libres
 con fines de semana, feriados y puentes. No tiene servidor ni dependencias: todo se calcula y se guarda en el navegador.
@@ -11,9 +11,11 @@ con fines de semana, feriados y puentes. No tiene servidor ni dependencias: todo
 | `src/top.html` | Estilos y estructura. |
 | `src/logic.js` | Fechas, feriados, estado guardado, enlace para compartir y el optimizador. |
 | `src/ui.js` | Interfaz: configuración, plan, calendario, exportar. |
-| `src/build.py` | Une los tres archivos e incrusta las tipografías de `src/fonts/`. |
+| `src/build.py` | Une los tres archivos, incrusta las tipografías de `src/fonts/` y el bloque fijo de feriados (necesita Node). |
+| `src/info.js` | Imprime ese bloque fijo (`infoHtml` de `logic.js`) para `build.py`. |
 | `og.png`, `src/og-image.js` | Imagen que se ve al compartir la dirección (1200×630) y el script que la genera. |
 | `CNAME`, `.nojekyll` | Publicación en GitHub Pages con el dominio `megapuente.com`, sirviendo los archivos tal cual. |
+| `robots.txt`, `sitemap.xml` | Para buscadores. |
 | `tests/` | Pruebas del cálculo y de la página. |
 
 ## Cambiar algo
@@ -46,6 +48,10 @@ node tests/ui.test.js         # la página en Chromium, con la fecha simulada
 - **Compartir**: el botón copia un enlace `…#plan=<código>` con la configuración (base64url de un JSON) en el fragmento
   de la dirección, que no se envía a ningún servidor. Quien lo abre sin tener nada guardado se queda con ese plan; quien ya
   tenía uno distinto solo lo ve (no se guarda) hasta que elige «Quedarme con este» o «Volver al mío».
+- **Texto fijo** (al final de la página): feriados y puentes de dos años y preguntas frecuentes, para quien llega buscando
+  «puentes 2027» y para los buscadores. El bloque de los años sale de `infoHtml()`: `build.py` lo deja escrito en `index.html`
+  y la página lo regenera al abrir, así que no queda viejo aunque no se reconstruya. De octubre en adelante muestra los dos
+  años siguientes.
 - **ICS**: un evento de día completo por descanso. El UID depende de las fechas del descanso, así que volver a importar
   un descanso que no cambió no lo duplica. Si un descanso cambia de fechas, el evento anterior hay que borrarlo a mano
   en el calendario (un archivo ICS no puede borrar eventos ya importados).

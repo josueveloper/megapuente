@@ -388,8 +388,7 @@ function render() {
     <details class="how"><summary>¿Cómo se calcula?</summary>
       <p>Un descanso es una racha de días libres seguidos (fines de semana, feriados y vacaciones) que incluye al menos un día de vacaciones. La página prueba todas las combinaciones posibles y elige la que suma más días de descanso con tus días disponibles, respetando el estilo que elegiste; si varios planes dan lo mismo, prefiere el que gasta menos días y reparte mejor los descansos a lo largo del periodo.</p>
       <p>Los feriados oficiales son los del artículo 74 de la Ley Federal del Trabajo. El mínimo de vacaciones por antigüedad corresponde a la reforma vigente desde 2023. Todo se guarda solo en este navegador; el enlace de «Compartir» lleva tu configuración en la propia dirección, sin pasar por ningún servidor.</p>
-    </details>
-    <div class="foot">Hecho con ☕ para quienes ya quieren puente.</div>`;
+    </details>`;
   restoreAnchor(anchor);
   setBar(total, used);
   $('#live').textContent = `${total} días de descanso con ${used} días de vacaciones.`;
@@ -483,9 +482,9 @@ function planIcs() {
   const stamp = new Date().toISOString().replace(/[-:]|\.\d+/g, ''), enc = new TextEncoder();
   // RFC 5545: cada línea mide 75 bytes como máximo; lo que sobra sigue en la línea siguiente, que empieza con un espacio.
   const fold = l => { let out = '', n = 0; for (const ch of l) { const k = enc.encode(ch).length; if (n + k > 75) { out += '\r\n '; n = 1; } out += ch; n += k; } return out; };
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Optimizador de vacaciones//ES', 'CALSCALE:GREGORIAN'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Megapuente//ES', 'CALSCALE:GREGORIAN'];
   // El UID depende solo de las fechas del descanso: volver a importar el mismo descanso lo actualiza en vez de duplicarlo.
-  blocks.forEach(b => L.push('BEGIN:VEVENT', `UID:descanso-${c(M.p0 + b.a)}-${c(M.p0 + b.b)}@optimizador-vacaciones`,
+  blocks.forEach(b => L.push('BEGIN:VEVENT', `UID:descanso-${c(M.p0 + b.a)}-${c(M.p0 + b.b)}@megapuente.com`,
     `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${c(M.p0 + b.a)}`, `DTEND;VALUE=DATE:${c(M.p0 + b.b + 1)}`,
     `SUMMARY:${e(`Descanso de ${b.len} días (pedir ${b.vac.length})`)}`,
     `DESCRIPTION:${e(`Días de vacaciones a pedir: ${fmtList(b.vac)}`)}`, 'TRANSP:TRANSPARENT', 'END:VEVENT'));
@@ -565,6 +564,7 @@ $('#res').addEventListener('click', e => {
 });
 
 $('#holcard').open = matchMedia('(min-width:901px)').matches;
+$('#info-years').innerHTML = infoHtml();   // el mismo bloque que build.py dejó en la página, con los años de hoy
 const linkOk = loadLink();
 syncPeriod();
 renderConfig();

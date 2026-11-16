@@ -54,6 +54,23 @@ prueba('metadatos para publicar', async () => {
   const png = fs.readFileSync(path.resolve(__dirname, '../og.png'));   // la imagen existe y mide lo que dicen los metadatos
   assert.deepStrictEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [+m['og:image:width'], +m['og:image:height']]);
 });
+prueba('marca Megapuente y texto fijo de puentes y preguntas (también sin JavaScript)', async () => {
+  let p = await abrir();
+  assert.match(await p.title(), /^Megapuente · /); assert.strictEqual(await p.textContent('h1'), 'Megapuente');
+  const info = () => p.evaluate(() => document.querySelector('#info-years').textContent.replace(/\s+/g, ' '));
+  assert.match(await info(), /Puentes y feriados de México en 2027 y 2028.*jue 16 sep.*Pide el vie 17 sep y descansas 4 días/);
+  assert.strictEqual(await p.locator('.faq h3').count(), 6); assert.strictEqual(await p.locator('.foot').count(), 1);
+  assert.strictEqual(JSON.parse(await p.textContent('script[type="application/ld+json"]')).name, 'Megapuente');
+  // Abierta casi un año después, el bloque se actualiza solo aunque index.html no se haya reconstruido.
+  p = await abrir({ hoy: '2027-10-05T10:00:00-06:00' });
+  assert.match(await info(), /Puentes y feriados de México en 2028 y 2029/);
+  // Sin JavaScript (como lo ve un buscador sencillo) el texto ya viene en el archivo.
+  const ctx = await browser.newContext({ javaScriptEnabled: false }), q = await ctx.newPage();
+  await q.goto(PAGE);
+  assert.match(await q.textContent('#info-years'), /Puentes y feriados de México en \d{4} y \d{4}.*Día de la Independencia/s);
+  assert.match(await q.textContent('.faq'), /¿Qué es un puente y qué es un megapuente\?/);
+  for (const f of ['robots.txt', 'sitemap.xml']) assert.match(fs.readFileSync(path.resolve(__dirname, '..', f), 'utf8'), /https:\/\/megapuente\.com\//);
+});
 prueba('no sugiere pedir el día de hoy; fijarlo a mano sí funciona', async () => {
   const p = await abrir({ hoy: '2026-11-20T18:00:00-06:00', guardado: { days: 3, start: '2026-11-20', end: '2026-12-31', style: 'puentes' } });
   assert.doesNotMatch((await ver(p)).plan, /Pedir: vie 20 nov/);
@@ -153,7 +170,7 @@ prueba('ICS: líneas plegadas a 75 bytes, UID por fechas y sin duplicar al reexp
   assert.ok(plano.some(l => Buffer.byteLength(l) > 75), 'el caso debería tener una línea larga que plegar');
   assert.ok(plano.some(l => /^DESCRIPTION:Días de vacaciones a pedir: .* – /.test(l)));
   const uids = plano.filter(l => l.startsWith('UID:'));
-  assert.ok(uids.length >= 2 && new Set(uids).size === uids.length); assert.ok(uids.every(u => /^UID:descanso-\d{8}-\d{8}@optimizador-vacaciones$/.test(u)), uids[0]);
+  assert.ok(uids.length >= 2 && new Set(uids).size === uids.length); assert.ok(uids.every(u => /^UID:descanso-\d{8}-\d{8}@megapuente\.com$/.test(u)), uids[0]);
   assert.ok(plano.every(l => !l.startsWith('DTSTAMP:') || /^DTSTAMP:\d{8}T\d{6}Z$/.test(l)));
   // Con un día menos el plan cambia, pero los descansos que siguen igual conservan su UID.
   await p.locator('#minus').click(); await p.waitForTimeout(200);

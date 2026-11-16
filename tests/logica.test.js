@@ -55,6 +55,24 @@ prueba('un día libre que se repite el 29 de febrero solo cae en años bisiestos
   assert.deepStrictEqual(L.customDates({ date: '2024-02-29', yearly: true }, 2027, 2028).map(L.iso), ['2028-02-29']);
 });
 
+prueba('texto fijo de puentes: años, feriados y consejo según el día de la semana', () => {
+  const texto = L => L.infoHtml().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  let L = load({ hoy: [2026, 11, 16] }), t = texto(L);
+  assert.deepStrictEqual(L.infoYears(), [2027, 2028]);
+  assert.match(t, /Puentes y feriados de México en 2027 y 2028/);
+  assert.match(t, /jue 16 sep Día de la Independencia Pide el vie 17 sep y descansas 4 días \(jue 16 sep – dom 19 sep\)\./);
+  assert.match(t, /lun 1 feb Día de la Constitución Puente de 3 días \(sáb 30 ene – lun 1 feb\)\. Si pides el vie 29 ene o el mar 2 feb, son 4\./);
+  assert.match(t, /vie 1 ene Año Nuevo Puente de 3 días \(vie 1 ene – dom 3 ene\)\. Si pides el jue 31 dic o el lun 4 ene, son 4\./);
+  assert.match(t, /sáb 1 may Día del Trabajo Cae en sábado: este año no da puente\./);
+  assert.match(t, /Jueves Santo \(jue 25 mar\), Viernes Santo \(vie 26 mar\)/);
+  assert.match(t, /Jueves Santo \(jue 13 abr\)/, 'también el segundo año');
+  assert.deepStrictEqual(load({ hoy: [2027, 5, 4] }).infoYears(), [2027, 2028]);
+  assert.deepStrictEqual(load({ hoy: [2027, 10, 1] }).infoYears(), [2028, 2029]);
+  const tip = (y, m, d) => L.bridgeTip(L.dn(y, m - 1, d));
+  assert.match(tip(2029, 5, 1), /^Pide el lun 30 abr y descansas 4 días \(sáb 28 abr – mar 1 may\)/);   // martes
+  assert.match(tip(2030, 5, 1), /^Pide lunes y martes \(sáb 27 abr – mié 1 may\) o jueves y viernes \(mié 1 may – dom 5 may\) y descansas 5 días/);   // miércoles
+});
+
 console.log('Plan');
 prueba('2027 con 12 días: totales por estilo', () => {
   const L = load(), y = { start: '2027-01-01', end: '2027-12-31', days: 12 };
