@@ -82,6 +82,62 @@ prueba('errores de periodo', () => {
   assert.match(err({ start: '2027-01-01', end: '2030-01-01' }), /dos años/);
 });
 
+prueba('«Equilibrado» avisa cuántas vacaciones largas quería y cuántas no cupieron', () => {
+  const L = load(), y = { start: '2027-01-01', end: '2027-12-31' }, wm = (estado, estilo) => { const { r } = plan(L, estado, estilo); return [r.want, r.missing]; };
+  assert.deepStrictEqual(wm({ ...y, days: 12 }, 'mix'), [1, 0]);
+  assert.deepStrictEqual(wm({ ...y, days: 16 }, 'mix'), [2, 0]);
+  assert.deepStrictEqual(wm({ ...y, days: 1 }, 'mix'), [1, 1]);
+  assert.deepStrictEqual(wm({ days: 16, start: '2027-06-07', end: '2027-06-18' }, 'mix'), [2, 1]);
+  assert.deepStrictEqual(wm({ ...y, days: 1 }, 'puentes'), [0, 0]);
+  assert.deepStrictEqual(wm({ ...y, days: 0 }, 'mix'), [0, 0]);
+});
+
+console.log('Top puentes');
+prueba('entre puentes equivalentes muestra el que ya está en el plan', () => {
+  const L = load(), { M, r } = plan(L, { start: '2027-01-01', end: '2027-12-31', days: 12 }, 'mix'), o = L.opportunities(M, r.chosen);
+  assert.strictEqual(o.length, 5);
+  assert.ok(o.every(x => x.mine), 'el plan aprovecha los cinco feriados, pero alguno sale como pendiente');
+  assert.deepStrictEqual(o.map(x => [x.cost, x.len]), [[1, 4], [1, 4], [1, 4], [1, 4], [1, 4]]);
+  const libres = L.opportunities(M, new Uint8Array(M.N));
+  assert.ok(libres.length === 5 && libres.every(x => !x.mine), 'sin plan, ninguno está «en tu plan»');
+});
+prueba('un día fijado cuenta como día pedido', () => {
+  const L = load(), { M, r } = plan(L, { start: '2027-01-01', end: '2027-12-31', days: 12, fixed: ['2027-01-29'] }, 'mix');
+  const feb = L.opportunities(M, r.chosen).find(x => L.iso(M.p0 + x.b) >= '2027-02-01' && L.iso(M.p0 + x.a) <= '2027-02-01');
+  assert.deepStrictEqual([L.iso(M.p0 + feb.a), L.iso(M.p0 + feb.b), feb.cost, feb.len, feb.mine], ['2027-01-29', '2027-02-01', 1, 4, true]);
+});
+
+console.log('Estado guardado y enlace para compartir');
+prueba('un estado dañado se limpia en vez de romper', () => {
+  const L = load(), d = L.defaults();
+  assert.deepStrictEqual(L.sanitize({}), { ...d });
+  const s = L.sanitize({ days: 'abc', start: 5, rest: 'x', style: 'constructor', hol: null, custom: [null, { date: 'x' }, { date: '2027-05-05', name: 7, yearly: 1 }], fixed: 5, blocked: [1, '2027-02-30x', '2027-03-04', '2027-03-04'] });
+  assert.deepStrictEqual(s, { ...d, custom: [{ date: '2027-05-05', name: '', yearly: true }], blocked: ['2027-03-04'] });
+  assert.deepStrictEqual(L.sanitize({ days: 99.6, rest: [6, 6, 9, '0', 0], hol: { jsanto: true, navidad: 'no', inventado: true } }), { ...d, days: 60, rest: [6, 0], hol: { jsanto: true } });
+  assert.strictEqual(L.sanitize({ start: '2027-01-01', end: '2027-06-30' }).preset, null, 'lo guardado sin «preset» conserva sus fechas');
+  assert.strictEqual(L.sanitize({ preset: 'rest' }).preset, 'rest');
+});
+prueba('lo que hay en localStorage se lee ya limpio', () => {
+  assert.strictEqual(load({ guardado: { days: 20, fixed: 5, custom: null } }).getState().days, 20);
+  assert.deepStrictEqual(load({ guardado: { days: 20, fixed: 5, custom: null } }).getState().fixed, []);
+  for (const malo of ['{mal json', '[]', '"hola"', 'null']) { const L = load({ guardado: malo }); assert.deepStrictEqual(L.getState(), malo === '[]' ? L.sanitize([]) : L.defaults()); }
+});
+prueba('el enlace conserva el plan (acentos y emojis incluidos) y uno dañado se descarta', () => {
+  const L = load(), est = L.sanitize({ days: 15, start: '2027-01-01', end: '2027-12-31', rest: [0], style: 'escapadas', hol: { jsanto: true, navidad: false }, custom: [{ date: '2027-08-20', name: 'Cumpleaños de la señora Ñ 🎂', yearly: true }], fixed: ['2027-03-04'], blocked: ['2027-03-05'] });
+  L.setState(est);
+  const code = L.shareCode();
+  assert.match(code, /^[\w-]+$/);
+  assert.deepStrictEqual(L.fromShareCode(code), est);
+  L.setState({ ...est, rest: [], preset: '12m' });
+  assert.deepStrictEqual([L.fromShareCode(L.shareCode()).rest, L.fromShareCode(L.shareCode()).preset], [[], '12m']);
+  for (const malo of ['', '%%%', 'bnVsbA', 'abc']) assert.strictEqual(L.fromShareCode(malo), null);
+});
+prueba('save() escribe el estado actual en localStorage', () => {   // que no guarde mientras se ve un plan compartido se prueba en ui.test.js
+  const L = load({ guardado: { days: 7 } });
+  L.setState({ ...L.getState(), days: 30 }); L.save();
+  assert.strictEqual(JSON.parse(L.store.get('optimizador-vacaciones-mx-v1')).days, 30);
+});
+
 console.log('Optimizador contra fuerza bruta');
 prueba('mismo total de descanso y de días gastados que probando todas las combinaciones', () => {
   const L = load(), casos = +process.argv[2] || 300;

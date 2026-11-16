@@ -82,10 +82,43 @@ function defaults() {
     rest: [0, 6], style: 'mix', hol: {}, custom: [], fixed: [], blocked: [],
   };
 }
-let state = defaults();
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === 'object') state = { ...state, preset: null, ...s }; } catch (e) {}   // lo guardado sin «preset» (versión anterior) trae fechas fijas
-if (!STYLES[state.style]) state.style = 'mix';
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+/* Limpia un estado que viene de fuera (localStorage o un enlace compartido): lo que falta o no es válido toma su valor
+   por defecto, para que un dato dañado no deje la página en blanco. Sin «preset» (versión anterior) las fechas son fijas. */
+function sanitize(o) {
+  const d = defaults(), okDate = v => typeof v === 'string' && !isNaN(fromIso(v));
+  const dates = a => Array.isArray(a) ? [...new Set(a.filter(okDate))].slice(0, 400) : [];
+  const preset = o.preset === 'rest' || o.preset === '12m' ? o.preset : null, per = okDate(o.start) && okDate(o.end);
+  const hol = {};
+  if (o.hol && typeof o.hol === 'object') for (const r of RULES) if (typeof o.hol[r.id] === 'boolean') hol[r.id] = o.hol[r.id];
+  return {
+    days: Number.isFinite(o.days) ? Math.max(0, Math.min(60, Math.round(o.days))) : d.days,
+    start: per ? o.start : d.start, end: per ? o.end : d.end, preset: preset || (per ? null : d.preset),
+    rest: Array.isArray(o.rest) ? [...new Set(o.rest.filter(w => Number.isInteger(w) && w >= 0 && w <= 6))] : d.rest,
+    style: Object.prototype.hasOwnProperty.call(STYLES, o.style) ? o.style : d.style,
+    hol,
+    custom: Array.isArray(o.custom) ? o.custom.filter(c => c && okDate(c.date)).slice(0, 200)
+      .map(c => ({ date: c.date, name: typeof c.name === 'string' ? c.name.slice(0, 60) : '', yearly: !!c.yearly })) : [],
+    fixed: dates(o.fixed), blocked: dates(o.blocked),
+  };
+}
+const readSaved = () => { try { const s = JSON.parse(localStorage.getItem(KEY)); return s && typeof s === 'object' ? sanitize(s) : null; } catch (e) { return null; } };
+let state = readSaved() || defaults();
+let shared = false;   // se está viendo el plan de un enlace compartido: no se guarda (el propio sigue intacto) hasta adoptarlo
+const save = () => { if (shared) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+/* Enlace para compartir: la configuración viaja en el #fragmento de la dirección (base64url de un JSON), que no se envía a ningún servidor. */
+const b64u = {
+  enc: s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+  dec: s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))),
+};
+function shareCode() {
+  const o = { days: state.days, rest: state.rest, style: state.style };
+  if (state.preset) o.preset = state.preset; else { o.start = state.start; o.end = state.end; }
+  if (Object.keys(state.hol).length) o.hol = state.hol;
+  for (const k of ['custom', 'fixed', 'blocked']) if (state[k].length) o[k] = state[k];
+  return b64u.enc(JSON.stringify(o));
+}
+function fromShareCode(code) { try { const o = JSON.parse(b64u.dec(code)); return o && typeof o === 'object' ? sanitize(o) : null; } catch (e) { return null; } }
 
 /* ---------- Modelo del calendario ---------- */
 function build() {
@@ -193,26 +226,31 @@ function solve(M, K, st, need) {
   return { value, chosen };
 }
 function optimize(M, K, st) {
-  if (K <= 0) return { value: 0, chosen: new Uint8Array(M.N) };
-  // «Equilibrado» exige una vacación larga (dos si hay 16 días o más); si no cabe, se relaja.
-  let need = st.long ? Math.max(0, (K >= 16 ? 2 : 1) - M.fixedRuns.filter(L => L >= st.long).length) : 0, r = solve(M, K, st, need);
+  if (K <= 0) return { value: 0, chosen: new Uint8Array(M.N), want: 0, missing: 0 };
+  // «Equilibrado» exige una vacación larga (dos si hay 16 días o más); si no cabe, se relaja y se avisa (want/missing).
+  const want = st.long ? Math.max(0, (K >= 16 ? 2 : 1) - M.fixedRuns.filter(L => L >= st.long).length) : 0;
+  let need = want, r = solve(M, K, st, need);
   while (r.value < 0 && need > 0) r = solve(M, K, st, --need);
+  r.want = want; r.missing = want - need;
   return r;
 }
 
-/* Mejores puentes: descansos alrededor de un feriado, ordenados por días libres por día pedido. */
-function opportunities(M) {
+/* Mejores puentes: descansos alrededor de un feriado, ordenados por días libres por día pedido.
+   Los días fijados cuentan como días pedidos. `mine` indica que todos sus días ya están en el plan (`chosen` o fijos);
+   entre puentes equivalentes (mismo feriado, mismo largo y costo) se muestra el que ya está en el plan. */
+function opportunities(M, chosen) {
   const all = [];
   for (let a = 0; a < M.N; a++) {
     if (a > 0 && M.off[a - 1]) continue;
-    let cost = 0, hol = false;
+    let cost = 0, hol = false, mine = true;
     for (let b = a; b < M.N && b - a < 12; b++) {
-      if (!M.off[b]) { if (!M.take[b]) break; if (++cost > 5) break; }
+      if (M.fix[b]) { if (++cost > 5) break; }
+      else if (!M.off[b]) { if (!M.take[b]) break; if (++cost > 5) break; if (!chosen[b]) mine = false; }
       if (M.holW[b]) hol = true;
-      if (cost && hol && (b === M.N - 1 || !M.off[b + 1])) all.push({ a, b, cost, len: b - a + 1, r: (b - a + 1) / cost });
+      if (cost && hol && (b === M.N - 1 || !M.off[b + 1])) all.push({ a, b, cost, len: b - a + 1, r: (b - a + 1) / cost, mine });
     }
   }
-  all.sort((x, y) => y.r - x.r || y.len - x.len || x.a - y.a);
+  all.sort((x, y) => y.r - x.r || y.len - x.len || y.mine - x.mine || x.a - y.a);
   const out = [];
   for (const o of all) {
     if (o.r < 2) break;

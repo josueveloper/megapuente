@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Optimizador de vacaciones · México</title>
+<meta name="description" content="Calcula qué días de vacaciones pedir en México para juntar más días libres con fines de semana, feriados y puentes.">
+<meta name="theme-color" content="#fff4dc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17122b" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_MX">
+<meta property="og:title" content="Optimizador de vacaciones · México">
+<meta property="og:description" content="Calcula qué días de vacaciones pedir para juntar más días libres con fines de semana, feriados y puentes.">
+<meta name="twitter:card" content="summary">
 <style>
 /* Tipografías pixel (licencia SIL OFL 1.1): Press Start 2P para títulos y DotGothic16 para el texto */
 @font-face{font-family:"Press Start 2P";font-weight:400;font-display:swap;src:url(data:font/woff2;base64,/*FONT:press-start-2p-latin-400-normal.woff2*/) format("woff2")}
@@ -237,6 +245,8 @@ details.card[open]>summary::after{content:"[-]"}
 }
 
 .note{background:var(--tip);color:var(--on);box-shadow:var(--b2);margin:2px 8px 24px 2px;padding:10px 14px;font-size:16px;line-height:1.35}
+.note-a{display:inline-flex;gap:4px 18px;flex-wrap:wrap}
+.note .link{color:var(--on);font-size:16px;padding:0}
 .note::before{content:attr(data-k);font:400 8px/1 var(--f-d);background:var(--on);color:var(--yellow);padding:4px 6px 3px;margin-right:9px;position:relative;top:-2px}
 
 /* Estilos de descanso */
@@ -338,8 +348,8 @@ details.how p{margin:8px 0 0}
 .sw.blk{background:repeating-linear-gradient(45deg,transparent 0 3px,var(--soft2) 3px 6px)}
 .sw.hol{background:var(--red)}
 .sw.x{background:var(--soft2)}
-.pop-bg{position:fixed;inset:0;background:rgba(20,12,40,.55);z-index:29}
-.pop.sheet{left:0!important;right:0;top:auto!important;bottom:0;width:auto;box-shadow:0 -3px 0 0 var(--line);padding:12px 12px calc(16px + env(safe-area-inset-bottom));animation:up .2s steps(4)}
+.pop-bg{position:fixed;inset:0;background:rgba(20,12,40,.55);z-index:29;touch-action:none}
+.pop.sheet{left:0!important;right:0;top:auto!important;bottom:0;width:auto;touch-action:none;box-shadow:0 -3px 0 0 var(--line);padding:12px 12px calc(16px + env(safe-area-inset-bottom));animation:up .2s steps(4)}
 .pop.sheet .po{padding:12px 8px}
 @keyframes up{from{transform:translateY(60px)}}
 

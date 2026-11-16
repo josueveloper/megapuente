@@ -51,11 +51,26 @@ function presets() {
 }
 /* Al abrir la página, un periodo relativo («Resto del año», «Próximos 12 meses») se recalcula con la fecha de hoy,
    y uno de fechas fijas que ya venció se cambia por el periodo por defecto. */
-function syncPeriod() {
-  const p = state.preset && presets().find(x => x.id === state.preset);
-  if (p) { state.start = p.s; state.end = p.e; return; }
-  state.preset = null;
-  if (fromIso(state.end) < todayDn()) { const d = defaults(); state.start = d.start; state.end = d.end; state.preset = d.preset; }
+function syncPeriod(st = state) {
+  const p = st.preset && presets().find(x => x.id === st.preset);
+  if (p) { st.start = p.s; st.end = p.e; return st; }
+  st.preset = null;
+  if (fromIso(st.end) < todayDn()) { const d = defaults(); st.start = d.start; st.end = d.end; st.preset = d.preset; }
+  return st;
+}
+/* Plan recibido por enlace (#plan=…). Si quien lo abre ya tiene guardado un plan distinto, solo se muestra (no se guarda)
+   hasta que decida quedarse con él; si no tenía nada, se adopta directamente y se limpia la dirección. */
+const linkCode = () => (/^#plan=([\w-]+)$/.exec(location.hash) || [])[1];
+const leaveShared = () => { shared = false; if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} };
+const shareLink = () => location.href.split('#')[0] + '#plan=' + shareCode();
+function loadLink() {
+  const code = linkCode(); if (!code) return true;
+  const s = fromShareCode(code), own = readSaved();
+  if (!s) { leaveShared(); return false; }
+  state = syncPeriod(s);
+  shared = !!own && JSON.stringify(syncPeriod(own)) !== JSON.stringify(s);
+  if (!shared) leaveShared();
+  return true;
 }
 function renderConfig() {
   $('#days').value = state.days;
@@ -120,7 +135,7 @@ function toast(msg, canUndo) {
 
 /* ---------- Plan ---------- */
 function makePlan(M, st) {
-  const K = Math.max(0, state.days - M.fixedCount), N = M.N, chosen = optimize(M, K, st).chosen;
+  const K = Math.max(0, state.days - M.fixedCount), N = M.N, opt = optimize(M, K, st), chosen = opt.chosen;
   // Descansos finales: rachas de días libres con al menos un día de vacaciones.
   const blocks = [], inB = new Int16Array(N).fill(-1);
   for (let i = 0; i < N;) {
@@ -139,7 +154,7 @@ function makePlan(M, st) {
     i = j;
   }
   return {
-    chosen, blocks, inB, used: blocks.reduce((a, b) => a + b.vac.length, 0),
+    chosen, blocks, inB, want: opt.want, missing: opt.missing, used: blocks.reduce((a, b) => a + b.vac.length, 0),
     total: blocks.reduce((a, b) => a + b.len, 0), longest: blocks.reduce((a, b) => Math.max(a, b.len), 0),
   };
 }
@@ -251,14 +266,17 @@ function render() {
   save(); const anchor = getAnchor(); closePop();
   const res = $('#body'), M = build();
   updateHolSum();
-  if (M.error) { last = null; clearTimeout(prevTimer); $('#hero').hidden = true; res.innerHTML = `<div class="note" data-k="UPS">${M.error}</div>`; setBar(); return; }
+  const sharedNote = shared ? '<div class="note" data-k="OJO">Estás viendo un plan compartido; el tuyo sigue guardado. <span class="note-a"><button type="button" class="link" id="adopt">Quedarme con este</button><button type="button" class="link" id="mine">Volver al mío</button></span></div>' : '';
+  if (M.error) { last = null; clearTimeout(prevTimer); $('#hero').hidden = true; res.innerHTML = `${sharedNote}<div class="note" data-k="UPS">${M.error}</div>`; setBar(); return; }
   showYear = P(M.eff).y !== P(M.e).y;
-  const pl = makePlan(M, STYLES[state.style]), { chosen, blocks, inB, used, total, longest } = pl, N = M.N;
+  const st = STYLES[state.style], K = Math.max(0, state.days - M.fixedCount);
+  const pl = makePlan(M, st), { chosen, blocks, inB, used, total, longest } = pl, N = M.N;
   last = { M, ...pl };
 
   const notes = [];
   if (M.fixedCount > state.days) notes.push(['OJO', `Fijaste ${M.fixedCount} días en el calendario, pero solo tienes ${state.days}. Quita algunos o aumenta tus días disponibles.`]);
   else if (state.days > 0 && used < state.days) notes.push(['OJO', `Te sobran ${plural(state.days - used, 'día', 'días')}: con este estilo y periodo no hay más descansos donde usarlos. Prueba otro estilo o amplía el periodo.`]);
+  if (pl.missing) notes.push(['OJO', `«${st.name}» busca ${pl.want === 1 ? 'una vacación larga' : 'dos vacaciones largas'} (de ${st.long} días o más), pero con tus días y este periodo ${pl.missing < pl.want ? 'solo cabe una' : pl.want === 1 ? 'no cabe' : 'no cabe ninguna'}. El plan se armó con descansos más cortos.`]);
   if (state.days === 0) notes.push(['TIP', 'Dime cuántos días de vacaciones tienes y te armo el plan.']);
   if (!RULES.some(r => !r.off && holOn(r)) && !state.custom.length) notes.push(['TIP', '¿Tu empresa da Jueves y Viernes Santo, el 2 de noviembre u otros días? Márcalos en «Feriados de tu empresa» y el plan mejora.']);
 
@@ -285,7 +303,7 @@ function render() {
     <div class="card noprint" data-anchor="styles">
       <h2>Elige tu estilo</h2>
       <div class="styles">${Object.entries(STYLES).map(([id, s]) =>
-        `<button type="button" data-s="${id}" aria-pressed="${id === state.style}"><span class="st-n">${s.name}</span><span class="st-v" data-sv="${id}"></span><small>${s.desc}</small></button>`).join('')}</div>
+        `<button type="button" data-s="${id}" aria-pressed="${id === state.style}"><span class="st-n">${s.name}</span><span class="st-v" data-sv="${id}"></span><small>${s.long && K >= 16 ? 'Dos vacaciones largas y el resto en puentes' : s.desc}</small></button>`).join('')}</div>
     </div>`;
 
   const strip = b => { let h = ''; for (let x = b.a; x <= b.b; x++) { const n = M.p0 + x, v = chosen[x] || M.fix[x]; h += `<i class="${v ? 'v' : M.hmap.has(n) ? 'h' : ''}" title="${fmt(n)}">${DOW1[P(n).w]}</i>`; } return h; };
@@ -333,21 +351,20 @@ function render() {
   }
 
   // Mejores puentes
-  const opps = opportunities(M);
+  const opps = opportunities(M, chosen);
   const oppHtml = opps.length ? `<ul class="opps">${opps.map(o => {
     const vac = [], names = [];
-    for (let x = o.a; x <= o.b; x++) { if (!M.off[x]) vac.push(M.p0 + x); if (M.holW[x]) names.push(hn(M, M.p0 + x)); }
-    const inPlan = vac.every(n => chosen[n - M.p0]);
+    for (let x = o.a; x <= o.b; x++) { if (!M.off[x] || M.fix[x]) vac.push(M.p0 + x); if (M.holW[x]) names.push(hn(M, M.p0 + x)); }
     return `<li><div><b>${plural(o.cost, 'día', 'días')} → ${o.len} días libres</b> · ${fmt(M.p0 + o.a)} – ${fmt(M.p0 + o.b)}<div class="sub">Pide ${fmtList(vac)} · ${esc([...new Set(names)].join(', '))}</div></div>
-      ${inPlan ? '<span class="tag">En tu plan</span>' : `<button type="button" class="btn" data-opp="${vac.join(',')}">Agregar</button>`}</li>`;
+      ${o.mine ? '<span class="tag">En tu plan</span>' : `<button type="button" class="btn" data-opp="${vac.join(',')}">Agregar</button>`}</li>`;
   }).join('')}</ul>` : '<div class="empty">No hay feriados entre semana en este periodo que se puedan aprovechar.</div>';
 
   res.innerHTML = `
-    ${notes.map(([k, n]) => `<div class="note" data-k="${k}">${n}</div>`).join('')}
+    ${sharedNote}${notes.map(([k, n]) => `<div class="note" data-k="${k}">${n}</div>`).join('')}
     ${stylesHtml}
     <div class="card" id="plan" data-anchor="plan">
       <div class="head"><div><h2>Tu plan</h2><span class="per">${fmt(v0, { noDow: true, year: true })} – ${fmt(M.e, { noDow: true, year: true })}</span></div>
-        <div class="row"><button type="button" class="btn" id="copy" ${blocks.length ? '' : 'disabled'}>Copiar</button><button type="button" class="btn" id="ics" ${blocks.length ? '' : 'disabled'}>Exportar ICS</button><button type="button" class="btn" id="print">Imprimir</button></div></div>
+        <div class="row"><button type="button" class="btn" id="share" title="Copiar un enlace a este plan">Compartir</button><button type="button" class="btn" id="copy" title="Copiar el plan como texto" ${blocks.length ? '' : 'disabled'}>Copiar</button><button type="button" class="btn" id="ics" ${blocks.length ? '' : 'disabled'}>Exportar ICS</button><button type="button" class="btn" id="print">Imprimir</button></div></div>
       ${planHtml}
     </div>
     <div class="card" data-anchor="cal">
@@ -368,7 +385,7 @@ function render() {
     </div>
     <details class="how"><summary>¿Cómo se calcula?</summary>
       <p>Un descanso es una racha de días libres seguidos (fines de semana, feriados y vacaciones) que incluye al menos un día de vacaciones. La página prueba todas las combinaciones posibles y elige la que suma más días de descanso con tus días disponibles, respetando el estilo que elegiste; si varios planes dan lo mismo, prefiere el que gasta menos días y reparte mejor los descansos a lo largo del periodo.</p>
-      <p>Los feriados oficiales son los del artículo 74 de la Ley Federal del Trabajo. El mínimo de vacaciones por antigüedad corresponde a la reforma vigente desde 2023. Todo se guarda solo en este navegador.</p>
+      <p>Los feriados oficiales son los del artículo 74 de la Ley Federal del Trabajo. El mínimo de vacaciones por antigüedad corresponde a la reforma vigente desde 2023. Todo se guarda solo en este navegador; el enlace de «Compartir» lleva tu configuración en la propia dirección, sin pasar por ningún servidor.</p>
     </details>
     <div class="foot">Hecho con ☕ para quienes ya quieren puente.</div>`;
   restoreAnchor(anchor);
@@ -384,7 +401,7 @@ function flash(sel) {
 
 /* ---------- Menú de un día del calendario ---------- */
 const pop = $('#pop'), popbg = $('#popbg');
-let popN = null, popY = 0;
+let popN = null, popY = 0, popW = 0;
 function closePop() { pop.hidden = true; popbg.hidden = true; popN = null; }
 function openPop(btn) {
   if (!last) return;
@@ -404,7 +421,7 @@ function openPop(btn) {
       + opt('hol', '', 'hol', 'Mi empresa lo da libre', 'Agregarlo como feriado', false);
   }
   pop.innerHTML = `<div class="pop-h"><div><b>${fmt(n, { year: true })}</b><span>${status}</span></div><button type="button" class="x" data-act="close" aria-label="Cerrar">X</button></div>${o}`;
-  popN = n; popY = scrollY;
+  popN = n; popY = scrollY; popW = innerWidth;
   const sheet = matchMedia('(max-width:640px)').matches;
   pop.classList.toggle('sheet', sheet); popbg.hidden = !sheet; pop.hidden = false;
   if (sheet) { pop.style.left = pop.style.top = ''; }
@@ -436,10 +453,16 @@ popbg.addEventListener('click', closePop);
 document.addEventListener('click', e => { if (!pop.hidden && !e.target.closest('#pop') && !e.target.closest('button[data-n]')) closePop(); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !pop.hidden) { const n = popN; closePop(); refocusDay(n); return; }
+  if (e.key === 'Tab' && !pop.hidden) {   // el foco da la vuelta dentro del menú
+    const f = [...pop.querySelectorAll('button')], i = f.indexOf(document.activeElement);
+    e.preventDefault(); f[i < 0 ? 0 : (i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus({ preventScroll: true }); return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && undoStack.length && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); undo(); }
 });
 window.addEventListener('scroll', () => { if (!pop.hidden && !pop.classList.contains('sheet') && Math.abs(scrollY - popY) > 60) closePop(); }, { passive: true });
-window.addEventListener('resize', closePop);
+// En el celular la hoja no se cierra cuando solo cambia el alto (la barra de direcciones aparece y desaparece al desplazar).
+window.addEventListener('resize', () => { if (!pop.classList.contains('sheet') || innerWidth !== popW) closePop(); });
+for (const el of [pop, popbg]) el.addEventListener('wheel', e => { if (!popbg.hidden) e.preventDefault(); }, { passive: false });   // con la hoja abierta la página no se desplaza
 
 /* ---------- Exportar ---------- */
 function planText() {
@@ -454,19 +477,23 @@ function planText() {
   return L.join('\n');
 }
 function planIcs() {
-  const { M, blocks } = last, c = n => iso(n).replace(/-/g, ''), e = s => s.replace(/([,;\\])/g, '\\$1');
+  const { M, blocks } = last, c = n => iso(n).replace(/-/g, ''), e = s => s.replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+  const stamp = new Date().toISOString().replace(/[-:]|\.\d+/g, ''), enc = new TextEncoder();
+  // RFC 5545: cada línea mide 75 bytes como máximo; lo que sobra sigue en la línea siguiente, que empieza con un espacio.
+  const fold = l => { let out = '', n = 0; for (const ch of l) { const k = enc.encode(ch).length; if (n + k > 75) { out += '\r\n '; n = 1; } out += ch; n += k; } return out; };
   const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Optimizador de vacaciones//ES', 'CALSCALE:GREGORIAN'];
-  blocks.forEach((b, i) => L.push('BEGIN:VEVENT', `UID:descanso-${c(M.p0 + b.a)}-${i}@optimizador-vacaciones`,
-    `DTSTAMP:${c(M.today)}T000000Z`, `DTSTART;VALUE=DATE:${c(M.p0 + b.a)}`, `DTEND;VALUE=DATE:${c(M.p0 + b.b + 1)}`,
+  // El UID depende solo de las fechas del descanso: volver a importar el mismo descanso lo actualiza en vez de duplicarlo.
+  blocks.forEach(b => L.push('BEGIN:VEVENT', `UID:descanso-${c(M.p0 + b.a)}-${c(M.p0 + b.b)}@optimizador-vacaciones`,
+    `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${c(M.p0 + b.a)}`, `DTEND;VALUE=DATE:${c(M.p0 + b.b + 1)}`,
     `SUMMARY:${e(`Descanso de ${b.len} días (pedir ${b.vac.length})`)}`,
     `DESCRIPTION:${e(`Días de vacaciones a pedir: ${fmtList(b.vac)}`)}`, 'TRANSP:TRANSPARENT', 'END:VEVENT'));
   L.push('END:VCALENDAR');
-  return L.join('\r\n');
+  return L.map(fold).join('\r\n') + '\r\n';
 }
-async function copyText(txt) {
+async function copyText(txt, msg = 'Plan copiado') {
   try { await navigator.clipboard.writeText(txt); }
   catch (e) { const a = document.createElement('textarea'); a.value = txt; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); }
-  toast('Plan copiado');
+  toast(msg);
 }
 
 /* ---------- Eventos ---------- */
@@ -496,7 +523,7 @@ $('#addh').addEventListener('submit', e => {
   $('#cname').value = ''; $('#cdate').value = ''; $('#cyear').checked = false;
   renderHolidays(); render(); toast('Día libre agregado');
 });
-$('#reset').addEventListener('click', () => { if (confirm('¿Borrar tus datos y empezar de nuevo?')) { try { localStorage.removeItem(KEY); } catch (e) {} state = defaults(); undoStack.length = 0; renderConfig(); render(); } });
+$('#reset').addEventListener('click', () => { if (confirm('¿Borrar tus datos y empezar de nuevo?')) { leaveShared(); try { localStorage.removeItem(KEY); } catch (e) {} state = defaults(); undoStack.length = 0; renderConfig(); render(); } });
 $('#undo').addEventListener('click', undo);
 $('#mbar-go').addEventListener('click', () => { const p = $('#hero'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 $('#res').addEventListener('click', e => {
@@ -508,8 +535,11 @@ $('#res').addEventListener('click', e => {
     const again = document.querySelector(`[data-s="${state.style}"]`); if (again) again.focus({ preventScroll: true });
     return;
   }
+  if (e.target.id === 'adopt') { leaveShared(); render(); toast('Listo: este plan ahora es el tuyo'); return; }
+  if (e.target.id === 'mine') { leaveShared(); state = syncPeriod(readSaved() || defaults()); undoStack.length = 0; renderConfig(); render(); toast('Volviste a tu plan'); return; }
   if (!last) return;
   const { M, blocks } = last;
+  if (e.target.id === 'share') { copyText(shareLink(), 'Enlace copiado: pégalo donde quieras'); return; }
   if ((b = q('[data-seg]'))) { flash(`#pb${b.dataset.seg}`); return; }
   if ((b = q('[data-go]'))) { flash(`.c[data-b="${b.dataset.go}"]`); return; }
   if ((b = q('[data-pin]'))) {
@@ -527,16 +557,19 @@ $('#res').addEventListener('click', e => {
   if (e.target.id === 'copy') { copyText(planText()); return; }
   if (e.target.id === 'print') { window.print(); return; }
   if (e.target.id === 'ics') {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([planIcs()], { type: 'text/calendar' }));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([planIcs()], { type: 'text/calendar;charset=utf-8' }));
     a.download = 'vacaciones.ics'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 });
 
 $('#holcard').open = matchMedia('(min-width:901px)').matches;
+const linkOk = loadLink();
 syncPeriod();
 renderConfig();
 render();
-window.__vac = { planText: () => last ? planText() : '', planIcs: () => last ? planIcs() : '', state: () => state };
+if (!linkOk) toast('Ese enlace no es válido: se muestra tu plan');
+window.addEventListener('hashchange', () => { if (linkCode()) location.reload(); });
+window.__vac = { planText: () => last ? planText() : '', planIcs: () => last ? planIcs() : '', state: () => state, shareLink };   // para las pruebas
 })();
 </script>
 </body>
