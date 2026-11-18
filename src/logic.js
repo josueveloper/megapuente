@@ -81,8 +81,9 @@ function infoHtml() {
     const off = [], opt = [];
     for (const r of RULES) { const n = r.f(y); if (n != null) (r.off ? off : opt).push([n, r.name]); }
     off.sort((a, b) => a[0] - b[0]); opt.sort((a, b) => a[0] - b[0]);
-    return `<div><h3>Puentes y feriados ${y}</h3><ul class="hl">${off.map(([n, name]) => `<li><b>${f(n)}</b><span>${name}<small>${bridgeTip(n)}</small></span></li>`).join('')}</ul>`
-      + `<p class="hl-x">No son obligatorios, pero muchas empresas los dan: ${opt.map(([n, name]) => `${name} (${f(n)})`).join(', ')}.</p></div>`;
+    const puentes = off.filter(([n]) => P(n).w >= 1 && P(n).w <= 5).length;
+    return `<details class="yr"><summary><h3>Puentes y feriados ${y}</h3><span>${puentes} de ${off.length} feriados dan puente</span></summary><ul class="hl">${off.map(([n, name]) => `<li><b>${f(n)}</b><span>${name}<small>${bridgeTip(n)}</small></span></li>`).join('')}</ul>`
+      + `<p class="hl-x">No son obligatorios, pero muchas empresas los dan: ${opt.map(([n, name]) => `${name} (${f(n)})`).join(', ')}.</p></details>`;
   };
   return `<h2>Puentes y feriados de México en ${ys[0]} y ${ys[1]}</h2>`
     + '<p>Estos son los días de descanso obligatorio de la Ley Federal del Trabajo (artículo 74) y cómo convertir cada uno en puente si descansas sábado y domingo. Con tus días de vacaciones, el optimizador de arriba arma el plan completo del año.</p>'

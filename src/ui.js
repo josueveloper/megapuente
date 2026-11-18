@@ -595,6 +595,7 @@ $('#res').addEventListener('click', e => {
 
 $('#holcard').open = matchMedia('(min-width:901px)').matches;
 $('#info-years').innerHTML = infoHtml();   // el mismo bloque que build.py dejó en la página, con los años de hoy
+if (matchMedia('(min-width:901px)').matches) document.querySelectorAll('.yr').forEach(d => { d.open = true; });   // en escritorio los años se ven abiertos; en celular, plegados
 const linkOk = loadLink();
 syncPeriod();
 renderConfig();

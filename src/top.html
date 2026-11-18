@@ -372,8 +372,20 @@ details.how p{margin:8px 0 0}
 .hl li:first-child{border-top:0}
 .hl small,.hl-x{display:block;color:var(--muted);font-size:14px}
 .info .hl-x{margin:8px 0 0;padding-top:10px;border-top:2px dotted var(--soft2)}
-.faq h3{font:400 16px/1.3 var(--f);text-transform:none;text-shadow:1px 0 0 currentColor;margin:18px 0 4px}
-.faq h3:first-of-type{margin-top:0}
+/* Partes plegables: años de feriados y preguntas frecuentes (el texto sigue en la página para los buscadores) */
+.info summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:12px}
+.info summary::-webkit-details-marker{display:none}
+.info summary::after{content:"+";margin-left:auto;flex:none;font:400 12px/1 var(--f-d);color:var(--muted);padding:0 2px}
+.info details[open]>summary::after{content:"-"}
+.info summary:hover::after{color:var(--ink)}
+.yr>summary{padding:6px 0 10px;flex-wrap:wrap}
+.yr>summary h3{margin:0}
+.yr>summary span{color:var(--muted);font-size:14px}
+.qa{border-top:2px dotted var(--soft2)}
+.qa:first-of-type{border-top:0}
+.qa>summary{padding:11px 0}
+.qa h3{font:400 16px/1.3 var(--f);text-transform:none;text-shadow:1px 0 0 currentColor;margin:0}
+.qa p{margin:0 0 12px}
 @media (max-width:900px){.info{padding:0 12px 24px}.info-y{grid-template-columns:minmax(0,1fr)}}
 
 /* Menú del día */
@@ -496,18 +508,12 @@ details.how p{margin:8px 0 0}
   <div class="card" id="info-years"><!--INFO--></div>
   <div class="card faq">
     <h2>Preguntas frecuentes</h2>
-    <h3>¿Qué es un puente y qué es un megapuente?</h3>
-    <p>Un puente es un fin de semana largo: se forma cuando un feriado cae junto al sábado y domingo, o cuando pides el día que queda en medio. Un megapuente junta todavía más días; aquí llamamos así a los descansos de 6 a 8 días seguidos.</p>
-    <h3>¿Cuáles son los días de descanso obligatorio en México?</h3>
-    <p>Los del artículo 74 de la Ley Federal del Trabajo: 1 de enero, el primer lunes de febrero, el tercer lunes de marzo, 1 de mayo, 16 de septiembre, el tercer lunes de noviembre, 25 de diciembre, el 1 de octubre de cada seis años por la transmisión del Poder Ejecutivo Federal y el día de la jornada electoral en elecciones ordinarias.</p>
-    <h3>¿Jueves y Viernes Santo son feriados oficiales?</h3>
-    <p>No. Tampoco el 2 de noviembre, el 12 de diciembre ni el 24 y 31 de diciembre. Muchas empresas los dan de todos modos: si la tuya lo hace, márcalos en «Feriados de tu empresa» y el plan los aprovecha.</p>
-    <h3>¿Cuántos días de vacaciones me tocan por ley?</h3>
-    <p>Desde la reforma de 2023 son 12 días el primer año y 2 más por cada año hasta llegar a 20 en el quinto. A partir del sexto año aumentan 2 días por cada cinco años de servicio: 22 de los 6 a los 10 años, 24 de los 11 a los 15, y así sucesivamente.</p>
-    <h3>¿Cómo elige Megapuente los días?</h3>
-    <p>Prueba todas las combinaciones de tus días de vacaciones con los fines de semana y feriados del periodo, y se queda con la que suma más días de descanso según el estilo que elijas: muchos puentes, escapadas medianas, vacaciones largas o una mezcla.</p>
-    <h3>¿Cuesta algo o guarda mis datos?</h3>
-    <p>Es gratis y no pide registro. Tu plan (días, fechas, feriados y marcas) se guarda solo en tu navegador y no se envía a ningún servidor. Lo único que se mide es cuántas visitas tiene la página, de forma anónima y sin cookies, con Cloudflare Web Analytics.</p>
+    <details class="qa"><summary><h3>¿Qué es un puente y qué es un megapuente?</h3></summary><p>Un puente es un fin de semana largo: se forma cuando un feriado cae junto al sábado y domingo, o cuando pides el día que queda en medio. Un megapuente junta todavía más días; aquí llamamos así a los descansos de 6 a 8 días seguidos.</p></details>
+    <details class="qa"><summary><h3>¿Cuáles son los días de descanso obligatorio en México?</h3></summary><p>Los del artículo 74 de la Ley Federal del Trabajo: 1 de enero, el primer lunes de febrero, el tercer lunes de marzo, 1 de mayo, 16 de septiembre, el tercer lunes de noviembre, 25 de diciembre, el 1 de octubre de cada seis años por la transmisión del Poder Ejecutivo Federal y el día de la jornada electoral en elecciones ordinarias.</p></details>
+    <details class="qa"><summary><h3>¿Jueves y Viernes Santo son feriados oficiales?</h3></summary><p>No. Tampoco el 2 de noviembre, el 12 de diciembre ni el 24 y 31 de diciembre. Muchas empresas los dan de todos modos: si la tuya lo hace, márcalos en «Feriados de tu empresa» y el plan los aprovecha.</p></details>
+    <details class="qa"><summary><h3>¿Cuántos días de vacaciones me tocan por ley?</h3></summary><p>Desde la reforma de 2023 son 12 días el primer año y 2 más por cada año hasta llegar a 20 en el quinto. A partir del sexto año aumentan 2 días por cada cinco años de servicio: 22 de los 6 a los 10 años, 24 de los 11 a los 15, y así sucesivamente.</p></details>
+    <details class="qa"><summary><h3>¿Cómo elige Megapuente los días?</h3></summary><p>Prueba todas las combinaciones de tus días de vacaciones con los fines de semana y feriados del periodo, y se queda con la que suma más días de descanso según el estilo que elijas: muchos puentes, escapadas medianas, vacaciones largas o una mezcla.</p></details>
+    <details class="qa"><summary><h3>¿Cuesta algo o guarda mis datos?</h3></summary><p>Es gratis y no pide registro. Tu plan (días, fechas, feriados y marcas) se guarda solo en tu navegador y no se envía a ningún servidor. Lo único que se mide es cuántas visitas tiene la página, de forma anónima y sin cookies, con Cloudflare Web Analytics.</p></details>
   </div>
   <div class="foot">Hecho con ☕ para quienes ya quieren puente.</div>
 </section>

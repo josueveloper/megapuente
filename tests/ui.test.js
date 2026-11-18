@@ -76,8 +76,18 @@ prueba('marca Megapuente y texto fijo de puentes y preguntas (también sin JavaS
   const info = () => p.evaluate(() => document.querySelector('#info-years').textContent.replace(/\s+/g, ' '));
   assert.match(await info(), /Puentes y feriados de México en 2027 y 2028.*jue 16 sep.*Pide el vie 17 sep y descansas 4 días/);
   assert.strictEqual(await p.locator('.faq h3').count(), 6); assert.strictEqual(await p.locator('.foot').count(), 1);
+  // Las respuestas van escondidas hasta tocar la pregunta; los años de feriados se ven abiertos en escritorio.
+  const r1 = p.locator('.qa').first();
+  assert.strictEqual(await r1.locator('p').isVisible(), false);
+  await r1.locator('summary').click(); assert.strictEqual(await r1.locator('p').isVisible(), true);
+  assert.deepStrictEqual(await p.locator('.yr').evaluateAll(ds => ds.map(d => d.open)), [true, true]);
+  assert.match(await p.textContent('.yr summary'), /^Puentes y feriados 2027 ?5 de 8 feriados dan puente$/);
   assert.match(await p.textContent('.faq'), /no se envía a ningún servidor\. Lo único que se mide es cuántas visitas .* sin cookies/);
   assert.strictEqual(JSON.parse(await p.textContent('script[type="application/ld+json"]')).name, 'Megapuente');
+  // En celular los años van plegados.
+  const m = await abrir({ movil: true });
+  assert.deepStrictEqual(await m.locator('.yr').evaluateAll(ds => ds.map(d => d.open)), [false, false]);
+  assert.strictEqual(await m.locator('.yr .hl').first().isVisible(), false);
   // Abierta casi un año después, el bloque se actualiza solo aunque index.html no se haya reconstruido.
   p = await abrir({ hoy: '2027-10-05T10:00:00-06:00' });
   assert.match(await info(), /Puentes y feriados de México en 2028 y 2029/);
