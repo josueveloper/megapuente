@@ -115,13 +115,85 @@ prueba('un estado guardado dañado no rompe la página', async () => {
     await p.context().close();
   }
 });
-prueba('Top puentes: muestra la variante que ya está en el plan y cuenta los días fijos', async () => {
-  let v = await ver(await abrir({ guardado: A2027 }));
-  assert.strictEqual(v.puentes.length, 5); assert.ok(v.puentes.every(t => /En tu plan$/.test(t)), 'hay puentes del plan con «Agregar»: ' + v.puentes.join(' | '));
-  assert.ok(v.puentes.some(t => /sáb 30 ene – mar 2 feb/.test(t)), v.puentes[1]);
-  v = await ver(await abrir({ guardado: { ...A2027, fixed: ['2027-01-29'] } }));   // viernes fijo antes del lunes feriado
+prueba('Top puentes: solo aparece si aporta; muestra la variante del plan y cuenta los días fijos', async () => {
+  // 2027 con 12 días: el plan ya aprovecha los 5 puentes, así que basta una línea en «Tu plan».
+  let p = await abrir({ guardado: A2027 }), v = await ver(p);
+  assert.strictEqual(v.puentes.length, 0); assert.strictEqual(await p.locator('[data-anchor="opps"]').count(), 0);
+  assert.strictEqual((await p.textContent('.plan-note')).trim(), 'Tu plan ya incluye los 5 mejores puentes del periodo.');
+  // Con 2 días no caben todos: aparece la lista, con los del plan marcados y el resto con «Agregar».
+  p = await abrir({ guardado: { ...A2027, days: 2, style: 'puentes' } }); v = await ver(p);
+  assert.strictEqual(v.puentes.length, 5); assert.strictEqual(await p.locator('.plan-note').count(), 0);
+  assert.ok(v.puentes.some(t => /En tu plan$/.test(t)) && v.puentes.some(t => /Agregar$/.test(t)), v.puentes.join(' | '));
+  // Un viernes fijo antes del lunes feriado cuenta como día pedido y sale «En tu plan».
+  v = await ver(await abrir({ guardado: { ...A2027, days: 2, fixed: ['2027-01-29'] } }));
   const feb = v.puentes.find(t => /Día de la Constitución/.test(t));
   assert.match(feb, /^1 día → 4 días libres · vie 29 ene – lun 1 feb ?Pide vie 29 ene .* En tu plan$/);
+  // Sin feriados entre semana en el periodo, no hay tarjeta vacía.
+  p = await abrir({ guardado: { days: 5, start: '2027-07-01', end: '2027-08-31' } });
+  assert.strictEqual(await p.locator('[data-anchor="opps"], .plan-note').count(), 0);
+});
+prueba('celular: el resultado va primero y la configuración plegada en un resumen', async () => {
+  const p = await abrir({ guardado: A2027, movil: true }), top = s => p.evaluate(s => document.querySelector(s).getBoundingClientRect().top + scrollY, s);
+  assert.ok(await top('#hero') < await top('#cfgsum') && await top('#cfgsum') < await top('#plan'), 'orden: resultado, resumen, plan');
+  assert.ok(await top('#hero') < 844, 'el resultado se ve sin desplazar');
+  assert.strictEqual(await p.isVisible('#days'), false);
+  assert.strictEqual((await p.textContent('#cfgsum-t')).trim(), '12 días · 2027 · descansas sáb y dom');
+  await p.locator('#cfgsum').tap(); await p.waitForTimeout(100);
+  assert.strictEqual(await p.isVisible('#days'), true); assert.strictEqual(await p.textContent('#cfgsum-b'), 'Listo');
+  await p.locator('#plus').tap(); await p.locator('[data-w="5"]').tap(); await p.waitForTimeout(150);
+  assert.strictEqual((await p.textContent('#cfgsum-t')).trim(), '13 días · 2027 · descansas vie, sáb y dom');
+  await p.locator('#cfgdone').tap(); await p.waitForTimeout(900);
+  assert.strictEqual(await p.isVisible('#days'), false); assert.strictEqual(await p.textContent('#cfgsum-b'), 'Cambiar');
+  assert.ok(Math.abs(await p.evaluate(() => document.querySelector('#hero').getBoundingClientRect().top)) < 40, 'regresó al resultado');
+  // Con un periodo vencido la configuración se abre sola para corregirlo.
+  const q = await abrir({ guardado: { days: 12, start: '2027-06-01', end: '2027-01-01' }, movil: true });
+  assert.match((await ver(q)).notas.join(' '), /posterior a la inicial/); assert.strictEqual(await q.isVisible('#days'), true);
+  // En escritorio no hay resumen: la configuración se ve completa.
+  const d = await abrir({ guardado: A2027 });
+  assert.strictEqual(await d.isVisible('#cfgsum'), false); assert.strictEqual(await d.isVisible('#days'), true); assert.strictEqual(await d.isVisible('#cfgdone'), false);
+});
+prueba('tarjetas del plan: sin tira de días y con las acciones en un menú «⋯»', async () => {
+  const p = await abrir({ guardado: A2027 });
+  assert.strictEqual(await p.locator('.strip, .pb-a').count(), 0);
+  assert.strictEqual(await p.locator('.pb-m').count(), await p.locator('.pb').count());
+  assert.strictEqual(await p.isVisible('.pb-m [data-pin="0"]'), false);
+  await p.locator('#pb0 summary').click(); assert.strictEqual(await p.isVisible('#pb0 [data-pin]'), true);
+  await p.locator('#pb1 summary').click(); await p.waitForTimeout(50);
+  assert.deepStrictEqual(await p.evaluate(() => [...document.querySelectorAll('.pb-m[open]')].map(d => d.closest('.pb').id)), ['pb1'], 'uno a la vez');
+  await p.keyboard.press('Escape'); assert.strictEqual(await p.locator('.pb-m[open]').count(), 0);
+  await p.locator('#pb2 summary').click(); await p.mouse.click(5, 5); assert.strictEqual(await p.locator('.pb-m[open]').count(), 0, 'se cierra al tocar fuera');
+  await p.locator('#pb0 summary').click(); await p.locator('#pb0 [data-pin]').click(); await p.waitForTimeout(150);
+  assert.deepStrictEqual((await ver(p)).estado.fixed, ['2027-01-04']);
+  assert.match(await p.textContent('#pb0 .kinds'), /Fijado/);
+  await p.locator('#pb1 summary').click(); await p.locator('#pb1 [data-drop]').click(); await p.waitForTimeout(150);
+  assert.ok((await ver(p)).estado.blocked.includes('2027-02-02'));
+});
+prueba('celular: el calendario va plegado hasta que se pide', async () => {
+  const p = await abrir({ guardado: A2027, movil: true }), visible = s => p.isVisible(s);
+  assert.strictEqual(await visible('#cal'), false); assert.strictEqual(await visible('.cal-card .legend'), false);
+  assert.strictEqual((await p.textContent('#calall')).trim(), 'Ver calendario');
+  await p.locator('#calall').tap(); await p.waitForTimeout(150);
+  assert.strictEqual(await visible('#cal'), true); assert.strictEqual(await p.locator('.month').evaluateAll(ms => ms.filter(m => m.offsetParent).length), 12);
+  await p.locator('#plus').evaluate(b => b.click()); await p.waitForTimeout(150);
+  assert.strictEqual(await visible('#cal'), true, 'sigue abierto al recalcular');
+  await p.locator('#calall').tap(); await p.waitForTimeout(150); assert.strictEqual(await visible('#cal'), false);
+  // «Ver en el calendario» desde un descanso lo abre y lleva a esos días.
+  await p.locator('#pb1 summary').tap(); await p.locator('#pb1 [data-go]').tap(); await p.waitForTimeout(900);
+  assert.strictEqual(await visible('#cal'), true);
+  const y = await p.locator('.c[data-b="1"]').first().evaluate(c => c.getBoundingClientRect().top);
+  assert.ok(y > 0 && y < 844, 'los días del descanso quedaron en pantalla');
+  // En escritorio el calendario se ve siempre y no hay botón.
+  const d = await abrir({ guardado: A2027 });
+  assert.strictEqual(await d.isVisible('#cal'), true); assert.strictEqual(await d.isVisible('#calall'), false);
+});
+prueba('el aviso de Semana Santa se puede cerrar y no vuelve a salir', async () => {
+  const p = await abrir({ guardado: A2027 }), aviso = async () => (await ver(p)).notas.some(n => /Jueves y Viernes Santo/.test(n));
+  assert.ok(await aviso());
+  await p.locator('[data-dismiss="feriados"]').click(); await p.waitForTimeout(100);
+  assert.ok(!(await aviso()));
+  await p.reload(); await p.waitForTimeout(250); assert.ok(!(await aviso()), 'sigue cerrado al volver a abrir');
+  p.on('dialog', d => d.accept()); await p.locator('#reset').click(); await p.waitForTimeout(250);
+  assert.ok(await aviso(), '«Restablecer todo» lo vuelve a mostrar');
 });
 prueba('«Equilibrado»: texto con 16 días o más y aviso cuando no cabe la vacación larga', async () => {
   let v = await ver(await abrir({ guardado: A2027 }));
@@ -162,6 +234,7 @@ prueba('menú de un día: Tab no se sale y Escape lo cierra', async () => {
 });
 prueba('celular: la hoja del día no se cierra al cambiar el alto ni deja desplazar la página', async () => {
   const p = await abrir({ guardado: A2027, movil: true }), dia = p.locator('button[data-n].vac').first(), abierta = () => p.evaluate(() => !document.querySelector('#pop').hidden);
+  await p.locator('#calall').tap(); await p.waitForTimeout(150);   // en celular el calendario va plegado
   const cdp = await p.context().newCDPSession(p), toque = (type, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: 195, y }] });
   const arrastrar = async () => { await toque('touchStart', 420); for (let y = 400; y >= 120; y -= 40) { await toque('touchMove', y); await p.waitForTimeout(20); } await toque('touchEnd'); await p.waitForTimeout(250); };
   await arrastrar();

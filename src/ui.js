@@ -82,6 +82,20 @@ function renderConfig() {
     `<button type="button" data-w="${w}" aria-pressed="${state.rest.includes(w)}" aria-label="${DOW[w]}">${DOW[w]}</button>`).join('');
   renderHolidays();
 }
+/* Celular: la configuración va plegada debajo del resultado, con un resumen de una línea. */
+const DOWS_ORDER = [1, 2, 3, 4, 5, 6, 0];
+function cfgSummary() {
+  const s = fromIso(state.start), e = fromIso(state.end), t = todayDn();
+  const chip = presets().find(p => Math.max(fromIso(p.s), t) === Math.max(s, t) && p.e === state.end);
+  const per = chip ? chip.l : isNaN(s) || isNaN(e) ? 'sin periodo' : `${fmt(Math.max(s, t), { noDow: true })} – ${fmt(e, { noDow: true, year: true })}`;
+  const r = DOWS_ORDER.filter(w => state.rest.includes(w)).map(w => DOW[w]);
+  const rest = !r.length ? 'sin descanso semanal' : 'descansas ' + (r.length === 1 ? r[0] : r.slice(0, -1).join(', ') + ' y ' + r[r.length - 1]);
+  return `${plural(state.days, 'día', 'días')} · ${per} · ${rest}`;
+}
+function setCfg(open) {
+  $('#cfg').classList.toggle('closed', !open);
+  $('#cfgsum').setAttribute('aria-expanded', open); $('#cfgsum-b').textContent = open ? 'Listo' : 'Cambiar';
+}
 function holRange() {
   const t = todayDn(), e = fromIso(state.end), s0 = fromIso(state.start), ok = !isNaN(s0) && !isNaN(e) && e >= s0 && e >= t;
   const s = ok ? Math.max(s0, t) : s0;   // los feriados que ya pasaron no cuentan
@@ -113,6 +127,12 @@ function updateHolSum() {
   for (const c of state.custom) b += customDates(c, y0, y1).filter(inP).length;
   $('#holsum').textContent = `${plural(a, 'oficial', 'oficiales')} · ${b} de tu empresa`;
 }
+
+/* ---------- Avisos cerrados ---------- */
+const HINTS_KEY = 'megapuente-avisos-v1';
+let hints = {};
+try { const h = JSON.parse(localStorage.getItem(HINTS_KEY)); if (h && typeof h === 'object' && !Array.isArray(h)) hints = h; } catch (e) {}
+const dismissHint = id => { hints[id] = true; try { localStorage.setItem(HINTS_KEY, JSON.stringify(hints)); } catch (e) {} };
 
 /* ---------- Marcas con deshacer ---------- */
 const undoStack = [];
@@ -178,7 +198,7 @@ function schedulePreviews(M) {
 }
 
 /* ---------- Interfaz: resultados ---------- */
-let last = null;
+let last = null, calOpen = false;   // calOpen: en celular, el calendario desplegado (en escritorio siempre se ve)
 const bird = cls => `<span class="bird ${cls}">${frames(BIRD_A, BIRD_B, .5)}</span>`;
 $('#res').innerHTML = `
   <div class="hero intro" id="hero" hidden>
@@ -266,6 +286,8 @@ function restoreAnchor(a) {
 function render() {
   save(); const anchor = getAnchor(); closePop();
   const res = $('#body'), M = build();
+  $('#cfgsum-t').textContent = cfgSummary();
+  if (M.error) setCfg(true);   // con un error de periodo, la configuración se abre para corregirlo
   updateHolSum();
   const sharedNote = shared ? '<div class="note" data-k="OJO">Estás viendo un plan compartido; el tuyo sigue guardado. <span class="note-a"><button type="button" class="link" id="adopt">Quedarme con este</button><button type="button" class="link" id="mine">Volver al mío</button></span></div>' : '';
   if (M.error) { last = null; clearTimeout(prevTimer); $('#hero').hidden = true; res.innerHTML = `${sharedNote}<div class="note" data-k="UPS">${M.error}</div>`; setBar(); return; }
@@ -279,7 +301,7 @@ function render() {
   else if (state.days > 0 && used < state.days) notes.push(['OJO', `Te sobran ${plural(state.days - used, 'día', 'días')}: con este estilo y periodo no hay más descansos donde usarlos. Prueba otro estilo o amplía el periodo.`]);
   if (pl.missing) notes.push(['OJO', `«${st.name}» busca ${pl.want === 1 ? 'una vacación larga' : 'dos vacaciones largas'} (de ${st.long} días o más), pero con tus días y este periodo ${pl.missing < pl.want ? 'solo cabe una' : pl.want === 1 ? 'no cabe' : 'no cabe ninguna'}. El plan se armó con descansos más cortos.`]);
   if (state.days === 0) notes.push(['TIP', 'Dime cuántos días de vacaciones tienes y te armo el plan.']);
-  if (!RULES.some(r => !r.off && holOn(r)) && !state.custom.length) notes.push(['TIP', '¿Tu empresa da Jueves y Viernes Santo, el 2 de noviembre u otros días? Márcalos en «Feriados de tu empresa» y el plan mejora.']);
+  if (!hints.feriados && !RULES.some(r => !r.off && holOn(r)) && !state.custom.length) notes.push(['TIP', '¿Tu empresa da Jueves y Viernes Santo, el 2 de noviembre u otros días? Márcalos en «Feriados de tu empresa» y el plan mejora.', 'feriados']);
 
   // Resumen con línea de tiempo del periodo (de hoy en adelante: lo que ya pasó no se dibuja)
   const v0 = M.eff, span = M.e - v0 + 1, pct = n => ((n - v0) / span * 100).toFixed(2);
@@ -307,7 +329,6 @@ function render() {
         `<button type="button" data-s="${id}" aria-pressed="${id === state.style}"><span class="st-n">${s.name}</span><span class="st-v" data-sv="${id}"></span><small>${s.long && K >= 16 ? 'Dos vacaciones largas y el resto en puentes' : s.desc}</small></button>`).join('')}</div>
     </div>`;
 
-  const strip = b => { let h = ''; for (let x = b.a; x <= b.b; x++) { const n = M.p0 + x, v = chosen[x] || M.fix[x]; h += `<i class="${v ? 'v' : M.hmap.has(n) ? 'h' : ''}" title="${fmt(n)}">${DOW1[P(n).w]}</i>`; } return h; };
   const planHtml = blocks.length ? `<ol class="plan">${blocks.map((b, i) => `
       <li class="pb" id="pb${i}" data-anchor="b${M.p0 + b.a}">
         <div><div class="num">${b.len}<small>${b.len === 1 ? 'día' : 'días'}</small></div><div class="ratio" title="Días libres por cada día de vacaciones">×${(b.len / b.vac.length).toFixed(1)}</div></div>
@@ -316,13 +337,12 @@ function render() {
           <div class="pt">${fmt(M.p0 + b.a)} <span class="arr">→</span> ${fmt(M.p0 + b.b)}</div>
           <div class="ps">Pide <b>${plural(b.vac.length, 'día', 'días')}</b>: ${fmtList(b.vac)}</div>
           ${b.hols.length ? `<div class="ph">${b.hols.map(n => `${esc(hn(M, n))} (${fmt(n)})`).join(' · ')}</div>` : ''}
-          <div class="strip">${strip(b)}</div>
-          <div class="pb-a">
-            <button type="button" class="tb" data-go="${i}" title="Ver en el calendario">Ver<span class="xs-hide"> en calendario</span></button>
-            <button type="button" class="tb" data-pin="${i}" title="${b.pinned ? 'Deja de fijar estos días' : 'Mantener este descanso aunque cambie lo demás'}">${b.pinned ? 'Soltar' : 'Fijar'}</button>
-            <button type="button" class="tb" data-drop="${i}" title="No me sirve: proponer otra cosa">Descartar</button>
-          </div>
         </div>
+        <details class="pb-m"><summary aria-label="Opciones de este descanso" title="Opciones"></summary><div class="pb-mm">
+          <button type="button" data-go="${i}">Ver en el calendario</button>
+          <button type="button" data-pin="${i}">${b.pinned ? 'Soltar' : 'Fijar'}<small>${b.pinned ? 'El plan podrá cambiarlo' : 'Se queda aunque cambie lo demás'}</small></button>
+          <button type="button" data-drop="${i}">Descartar<small>No me sirve: proponer otra cosa</small></button>
+        </div></details>
       </li>`).join('')}</ol>` : '<div class="empty">Todavía no hay descansos en el plan.</div>';
 
   // Calendario
@@ -353,23 +373,25 @@ function render() {
   }
 
   // Mejores puentes
-  const opps = opportunities(M, chosen);
-  const oppHtml = opps.length ? `<ul class="opps">${opps.map(o => {
+  const opps = opportunities(M, chosen), allMine = opps.length > 0 && opps.every(o => o.mine);
+  const oppHtml = opps.length && !allMine ? `<ul class="opps">${opps.map(o => {
     const vac = [], names = [];
     for (let x = o.a; x <= o.b; x++) { if (!M.off[x] || M.fix[x]) vac.push(M.p0 + x); if (M.holW[x]) names.push(hn(M, M.p0 + x)); }
     return `<li><div><b>${plural(o.cost, 'día', 'días')} → ${o.len} días libres</b> · ${fmt(M.p0 + o.a)} – ${fmt(M.p0 + o.b)}<div class="sub">Pide ${fmtList(vac)} · ${esc([...new Set(names)].join(', '))}</div></div>
       ${o.mine ? '<span class="tag">En tu plan</span>' : `<button type="button" class="btn" data-opp="${vac.join(',')}">Agregar</button>`}</li>`;
-  }).join('')}</ul>` : '<div class="empty">No hay feriados entre semana en este periodo que se puedan aprovechar.</div>';
+  }).join('')}</ul>` : '';   // si todos ya están en el plan, basta una línea en «Tu plan»; si no hay, no se muestra nada
+  const calMore = `<div class="cal-more"><span>${calOpen ? 'Toca un día para fijarlo, bloquearlo o marcarlo como día libre.' : 'Tu plan día por día; ahí también puedes fijar o bloquear días.'}</span><button type="button" class="btn" id="calall" aria-expanded="${calOpen}">${calOpen ? 'Ocultar calendario' : 'Ver calendario'}</button></div>`;
 
   res.innerHTML = `
-    ${sharedNote}${notes.map(([k, n]) => `<div class="note" data-k="${k}">${n}</div>`).join('')}
+    ${sharedNote}${notes.map(([k, n, id]) => `<div class="note${id ? ' closable' : ''}" data-k="${k}">${n}${id ? `<button type="button" class="note-x" data-dismiss="${id}" aria-label="Cerrar este aviso" title="No volver a mostrar">X</button>` : ''}</div>`).join('')}
     ${stylesHtml}
     <div class="card" id="plan" data-anchor="plan">
       <div class="head"><div><h2>Tu plan</h2><span class="per">${fmt(v0, { noDow: true, year: true })} – ${fmt(M.e, { noDow: true, year: true })}</span></div>
         <div class="row"><button type="button" class="btn" id="share" title="Copiar un enlace a este plan">Compartir</button><button type="button" class="btn" id="copy" title="Copiar el plan como texto" ${blocks.length ? '' : 'disabled'}>Copiar</button><button type="button" class="btn" id="ics" ${blocks.length ? '' : 'disabled'}>Exportar ICS</button><button type="button" class="btn" id="print">Imprimir</button></div></div>
       ${planHtml}
+      ${allMine ? `<p class="plan-note">Tu plan ya incluye ${opps.length === 1 ? 'el mejor puente' : `los ${opps.length} mejores puentes`} del periodo.</p>` : ''}
     </div>
-    <div class="card" data-anchor="cal">
+    <div class="card cal-card${calOpen ? ' open' : ''}" data-anchor="cal">
       <div class="head"><h2>Calendario</h2>${hasMarks ? '<button type="button" class="link" id="clear">Quitar mis marcas</button>' : ''}</div>
       <div class="legend">
         <span><i class="lg vac"></i>Vacación sugerida</span>
@@ -379,12 +401,10 @@ function render() {
         <span><i class="lg blk"></i>No puedo faltar</span>
       </div>
       <div class="hint noprint">Toca un día para fijarlo como vacación, marcar que no puedes faltar o agregarlo como día libre de tu empresa. El plan se recalcula solo.</div>
+      ${calMore}
       <div class="months" id="cal">${cal}</div>
     </div>
-    <div class="card noprint" data-anchor="opps">
-      <h2>Top puentes del periodo</h2>
-      ${oppHtml}
-    </div>
+    ${oppHtml ? `<div class="card noprint" data-anchor="opps"><h2>Top puentes del periodo</h2>${oppHtml}</div>` : ''}
     <details class="how"><summary>¿Cómo se calcula?</summary>
       <p>Un descanso es una racha de días libres seguidos (fines de semana, feriados y vacaciones) que incluye al menos un día de vacaciones. La página prueba todas las combinaciones posibles y elige la que suma más días de descanso con tus días disponibles, respetando el estilo que elegiste; si varios planes dan lo mismo, prefiere el que gasta menos días y reparte mejor los descansos a lo largo del periodo.</p>
       <p>Los feriados oficiales son los del artículo 74 de la Ley Federal del Trabajo. El mínimo de vacaciones por antigüedad corresponde a la reforma vigente desde 2023. Todo se guarda solo en este navegador; el enlace de «Compartir» lleva tu configuración en la propia dirección, sin pasar por ningún servidor.</p>
@@ -524,9 +544,17 @@ $('#addh').addEventListener('submit', e => {
   $('#cname').value = ''; $('#cdate').value = ''; $('#cyear').checked = false;
   renderHolidays(); render(); toast('Día libre agregado');
 });
-$('#reset').addEventListener('click', () => { if (confirm('¿Borrar tus datos y empezar de nuevo?')) { leaveShared(); try { localStorage.removeItem(KEY); } catch (e) {} state = defaults(); undoStack.length = 0; renderConfig(); render(); } });
+$('#reset').addEventListener('click', () => { if (confirm('¿Borrar tus datos y empezar de nuevo?')) { leaveShared(); try { localStorage.removeItem(KEY); localStorage.removeItem(HINTS_KEY); } catch (e) {} hints = {}; state = defaults(); undoStack.length = 0; renderConfig(); render(); } });
 $('#undo').addEventListener('click', undo);
-$('#mbar-go').addEventListener('click', () => { const p = $('#hero'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+const toHero = () => { setCfg(false); const p = $('#hero'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+$('#mbar-go').addEventListener('click', toHero);
+$('#cfgdone').addEventListener('click', toHero);
+$('#cfgsum').addEventListener('click', () => setCfg($('#cfg').classList.contains('closed')));
+// Menú «⋯» de los descansos: uno abierto a la vez; se cierra al tocar fuera o con Escape.
+const closeMenus = (except) => document.querySelectorAll('.pb-m[open]').forEach(d => { if (d !== except) d.open = false; });
+document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('.pb-m') && e.target.open) closeMenus(e.target); }, true);
+document.addEventListener('click', e => { if (!e.target.closest('.pb-m')) closeMenus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const d = document.querySelector('.pb-m[open]'); if (d) { d.open = false; d.querySelector('summary').focus(); } } });
 $('#res').addEventListener('click', e => {
   const q = s => e.target.closest(s);
   let b;
@@ -536,13 +564,15 @@ $('#res').addEventListener('click', e => {
     const again = document.querySelector(`[data-s="${state.style}"]`); if (again) again.focus({ preventScroll: true });
     return;
   }
+  if ((b = q('[data-dismiss]'))) { dismissHint(b.dataset.dismiss); render(); return; }
+  if (e.target.id === 'calall') { calOpen = !calOpen; render(); return; }
   if (e.target.id === 'adopt') { leaveShared(); render(); toast('Listo: este plan ahora es el tuyo'); return; }
   if (e.target.id === 'mine') { leaveShared(); state = syncPeriod(readSaved() || defaults()); undoStack.length = 0; renderConfig(); render(); toast('Volviste a tu plan'); return; }
   if (!last) return;
   const { M, blocks } = last;
   if (e.target.id === 'share') { copyText(shareLink(), 'Enlace copiado: pégalo donde quieras'); return; }
   if ((b = q('[data-seg]'))) { flash(`#pb${b.dataset.seg}`); return; }
-  if ((b = q('[data-go]'))) { flash(`.c[data-b="${b.dataset.go}"]`); return; }
+  if ((b = q('[data-go]'))) { closeMenus(); if (!calOpen) { calOpen = true; render(); } flash(`.c[data-b="${b.dataset.go}"]`); return; }
   if ((b = q('[data-pin]'))) {
     const bl = blocks[+b.dataset.pin], ks = bl.vac.map(iso), on = !bl.pinned;
     mark(() => ks.forEach(k => setFixed(k, on)), on ? 'Descanso fijado' : 'Descanso soltado'); return;

@@ -48,6 +48,11 @@ node tests/ui.test.js         # la página en Chromium, con la fecha simulada
 - **Compartir**: el botón copia un enlace `…#plan=<código>` con la configuración (base64url de un JSON) en el fragmento
   de la dirección, que no se envía a ningún servidor. Quien lo abre sin tener nada guardado se queda con ese plan; quien ya
   tenía uno distinto solo lo ve (no se guarda) hasta que elige «Quedarme con este» o «Volver al mío».
+- **Celular** (hasta 900 px de ancho): el resultado va primero y la configuración queda plegada en un resumen de una
+  línea («Cambiar» la abre); el calendario también va plegado y se abre con «Ver calendario» o desde el menú «⋯» de un
+  descanso. En escritorio todo se ve completo.
+- **Avisos que se cierran** (p. ej. el de Semana Santa): se recuerdan en `localStorage` (`megapuente-avisos-v1`);
+  «Restablecer todo» los vuelve a mostrar.
 - **Texto fijo** (al final de la página): feriados y puentes de dos años y preguntas frecuentes, para quien llega buscando
   «puentes 2027» y para los buscadores. El bloque de los años sale de `infoHtml()`: `build.py` lo deja escrito en `index.html`
   y la página lo regenera al abrir, así que no queda viejo aunque no se reconstruya. De octubre en adelante muestra los dos
