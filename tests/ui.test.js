@@ -61,6 +61,34 @@ prueba('la medición de visitas solo se carga en megapuente.com', async () => {
   assert.strictEqual(baliza, 1);
   assert.match(await q.getAttribute('script[data-cf-beacon]', 'data-cf-beacon'), /^\{"token": "[0-9a-f]{32}"\}$/);
 });
+prueba('botón de modo claro y oscuro: sigue al sistema hasta elegir y recuerda la elección', async () => {
+  const fondo = p => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const esperaTema = (p, t) => p.waitForFunction(t => document.documentElement.dataset.theme === t, t, { timeout: 3000 }).then(() => true, () => false);
+  const tema = p => p.evaluate(() => [document.documentElement.dataset.theme, document.querySelector('#theme').getAttribute('aria-label'), document.querySelector('meta[name="theme-color"]').content]);
+  const ctx = await browser.newContext({ viewport: DESK, colorScheme: 'light', timezoneId: 'America/Mexico_City' }), p = await ctx.newPage();
+  await p.clock.setFixedTime(new Date(HOY)); await p.goto(PAGE); await p.waitForTimeout(250);
+  assert.deepStrictEqual(await tema(p), ['light', 'Cambiar a modo oscuro', '#fff4dc']); const claro = await fondo(p);
+  await p.emulateMedia({ colorScheme: 'dark' });
+  assert.ok(await esperaTema(p, 'dark'), 'sin elección propia sigue al sistema');
+  await p.emulateMedia({ colorScheme: 'light' }); assert.ok(await esperaTema(p, 'light'));
+  await p.locator('#theme').click(); await p.waitForTimeout(100);
+  assert.deepStrictEqual(await tema(p), ['dark', 'Cambiar a modo claro', '#17122b']);
+  assert.notStrictEqual(await fondo(p), claro, 'cambian los colores');
+  assert.strictEqual(await p.locator('.night').isVisible(), true, 'la escena pasa a la noche');
+  await p.reload(); await p.waitForTimeout(250);
+  assert.strictEqual((await tema(p))[0], 'dark', 'recuerda la elección');
+  await p.emulateMedia({ colorScheme: 'dark' }); await p.emulateMedia({ colorScheme: 'light' }); await p.waitForTimeout(400);
+  assert.strictEqual((await tema(p))[0], 'dark', 'con elección propia ya no sigue al sistema');
+  await p.locator('#theme').click(); await p.waitForTimeout(100);
+  assert.strictEqual((await tema(p))[0], 'light'); assert.strictEqual(await p.locator('.day').isVisible(), true);
+  await p.locator('#theme').click(); p.on('dialog', d => d.accept()); await p.locator('#reset').click(); await p.waitForTimeout(150);
+  assert.strictEqual((await tema(p))[0], 'light', '«Restablecer todo» regresa al tema del sistema');
+  // Abierta con el sistema en oscuro, arranca oscura sin parpadeo: el tema ya está puesto cuando empieza el <body>.
+  const ctx2 = await browser.newContext({ colorScheme: 'dark' }), q = await ctx2.newPage();
+  await q.addInitScript(() => { new MutationObserver((ms, o) => { if (document.body) { window.__temaAlEmpezar = document.documentElement.dataset.theme; o.disconnect(); } }).observe(document, { childList: true, subtree: true }); });   // al correr esto aún no existe <html>
+  await q.goto(PAGE); await q.waitForTimeout(250);
+  assert.strictEqual(await q.evaluate(() => window.__temaAlEmpezar), 'dark'); assert.strictEqual((await tema(q))[0], 'dark');
+});
 prueba('metadatos para publicar', async () => {
   const p = await abrir();
   const m = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('meta[name],meta[property]')].map(x => [x.getAttribute('name') || x.getAttribute('property'), x.content])));

@@ -35,6 +35,23 @@ const KIND = len => len >= 9 ? ['k4', 'Vacaciones'] : len >= 6 ? ['k3', 'Megapue
 
 /* ---------- Interfaz: configuración ---------- */
 const $ = s => document.querySelector(s);
+
+/* Tema claro u oscuro: el script del <head> ya lo puso; aquí van el botón, la barra del navegador y los cambios del sistema. */
+const THEME_KEY = 'megapuente-tema', darkMq = matchMedia('(prefers-color-scheme: dark)');
+const savedTheme = () => { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch (e) { return null; } };
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = t === 'dark' ? '#17122b' : '#fff4dc'; });
+  const b = $('#theme'), next = t === 'dark' ? 'claro' : 'oscuro';
+  b.innerHTML = sprite(t === 'dark' ? SUN : MOON); b.title = b.ariaLabel = `Cambiar a modo ${next}`;
+}
+applyTheme(savedTheme() || (darkMq.matches ? 'dark' : 'light'));
+darkMq.addEventListener('change', () => { if (!savedTheme()) applyTheme(darkMq.matches ? 'dark' : 'light'); });   // sin elección propia, sigue al sistema
+$('#theme').addEventListener('click', () => {
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  applyTheme(t);
+});
 $('#logo').innerHTML = sprite(SUN, '');
 { const l = document.createElement('link'); l.rel = 'icon'; l.href = 'data:image/svg+xml,' + encodeURIComponent(sprite(SUN, '')); document.head.appendChild(l); }
 const lawDays = y => y <= 5 ? 10 + 2 * y : 22 + 2 * Math.floor((y - 6) / 5);
@@ -544,7 +561,7 @@ $('#addh').addEventListener('submit', e => {
   $('#cname').value = ''; $('#cdate').value = ''; $('#cyear').checked = false;
   renderHolidays(); render(); toast('Día libre agregado');
 });
-$('#reset').addEventListener('click', () => { if (confirm('¿Borrar tus datos y empezar de nuevo?')) { leaveShared(); try { localStorage.removeItem(KEY); localStorage.removeItem(HINTS_KEY); } catch (e) {} hints = {}; state = defaults(); undoStack.length = 0; renderConfig(); render(); } });
+$('#reset').addEventListener('click', () => { if (confirm('¿Borrar tus datos y empezar de nuevo?')) { leaveShared(); try { localStorage.removeItem(KEY); localStorage.removeItem(HINTS_KEY); localStorage.removeItem(THEME_KEY); } catch (e) {} hints = {}; applyTheme(darkMq.matches ? 'dark' : 'light'); state = defaults(); undoStack.length = 0; renderConfig(); render(); } });
 $('#undo').addEventListener('click', undo);
 const toHero = () => { setCfg(false); const p = $('#hero'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 $('#mbar-go').addEventListener('click', toHero);

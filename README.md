@@ -51,6 +51,9 @@ node tests/ui.test.js         # la página en Chromium, con la fecha simulada
 - **Celular** (hasta 900 px de ancho): el resultado va primero y la configuración queda plegada en un resumen de una
   línea («Cambiar» la abre); el calendario también va plegado y se abre con «Ver calendario» o desde el menú «⋯» de un
   descanso. En escritorio todo se ve completo.
+- **Modo claro u oscuro**: lo decide el atributo `data-theme` de `<html>`, que un script corto del `<head>` pone antes de
+  dibujar (sin parpadeo). Sin elección propia sigue al sistema; el botón del encabezado la guarda en `localStorage`
+  (`megapuente-tema`) y «Restablecer todo» la borra. Los estilos oscuros van bajo `[data-theme=dark]` en `src/top.html`.
 - **Avisos que se cierran** (p. ej. el de Semana Santa): se recuerdan en `localStorage` (`megapuente-avisos-v1`);
   «Restablecer todo» los vuelve a mostrar.
 - **Texto fijo** (al final de la página): feriados y puentes de dos años y preguntas frecuentes, para quien llega buscando
